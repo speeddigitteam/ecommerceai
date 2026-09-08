@@ -1,0 +1,191 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateProductRequest;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\Unit;
+use App\Services\MediaLibrary;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\View\View;
+
+class ProductController extends Controller
+{
+    public function __construct(private readonly MediaLibrary $mediaLibrary) {}
+
+    public function index(): View
+    {
+        return view('products.index', ['products' => Product::query()->with(['categories', 'brand'])->latest()->paginate(15)]);
+    }
+
+    public function create(): View
+    {
+        return view('products.form', [...$this->options(), 'product' => new Product]);
+    }
+
+    public function store(StoreProductRequest $request): RedirectResponse
+    {
+        $product = Product::query()->create($this->data($request));
+        $product->categories()->sync($request->validated('category_ids', []));
+        $this->storeMedia($request, $product);
+        $this->syncVariants($request, $product);
+
+        return to_route('products.index')->with('status', 'Product created successfully.');
+    }
+
+    public function show(Product $product): View
+    {
+        return view('products.show', ['product' => $product->load(['categories', 'brand', 'unit'])]);
+    }
+
+    public function edit(Product $product): View
+    {
+        return view('products.form', [...$this->options(), 'product' => $product->load('variants')]);
+    }
+
+    public function update(UpdateProductRequest $request, Product $product): RedirectResponse
+    {
+        $product->update($this->data($request, $product));
+        $product->categories()->sync($request->validated('category_ids', []));
+        $this->storeMedia($request, $product);
+        $this->syncVariants($request, $product);
+
+        return to_route('products.index')->with('status', 'Product updated successfully.');
+    }
+
+    public function destroy(Product $product): RedirectResponse
+    {
+        $this->mediaLibrary->delete([$product->featured_image_path, ...($product->gallery_paths ?? []), ...$product->variants()->pluck('image_path')->filter()->all()]);
+        if ($product->video_path) {
+            Storage::disk('public')->delete($product->video_path);
+        }
+        if ($product->digital_file_path) {
+            Storage::disk('local')->delete($product->digital_file_path);
+        }
+        $product->delete();
+
+        return to_route('products.index')->with('status', 'Product deleted successfully.');
+    }
+
+    /** @return array<string, mixed> */
+    private function data(StoreProductRequest $request, ?Product $product = null): array
+    {
+        $data = $request->safe()->except(['featured_image', 'gallery', 'video', 'category_ids', 'variants', 'digital_file', 'remove_digital_file']);
+        $data['slug'] = ($data['slug'] ?? null) ?: Str::slug($data['title']);
+        $data['tags'] = array_values(array_filter(array_map('trim', explode(',', $data['tags'] ?? ''))));
+        $data['specifications'] = collect($data['specifications'] ?? [])->map(fn (array $section): array => [
+            'title' => trim($section['title']),
+            'items' => collect($section['items'])->map(fn (array $item): array => [
+                'title' => trim($item['title']),
+                'value' => trim($item['value']),
+            ])->values()->all(),
+        ])->values()->all();
+        $data['questions'] = collect($data['questions'] ?? [])->map(fn (array $question): array => [
+            'question' => trim($question['question']),
+            'answer' => trim($question['answer']),
+        ])->values()->all();
+        $data['published_at'] = $data['status'] === 'published' ? (($data['published_at'] ?? null) ?: $product?->published_at ?: now()) : null;
+
+        if ($data['type'] === 'digital') {
+            $data['stock_quantity'] = Product::UNLIMITED_STOCK;
+        }
+
+        $variants = collect($request->validated('variants', []));
+        if ($variants->isNotEmpty()) {
+            $pricedVariants = $variants->filter(fn (array $variant): bool => ($variant['price'] ?? null) !== null && $variant['price'] !== '');
+            $saleVariants = $variants->filter(fn (array $variant): bool => ($variant['sale_price'] ?? null) !== null && $variant['sale_price'] !== '');
+            $data['price'] = $pricedVariants->isNotEmpty() ? $pricedVariants->min(fn (array $variant): float => (float) $variant['price']) : ($data['price'] ?? null);
+            $data['sale_price'] = $saleVariants->isNotEmpty() ? $saleVariants->min(fn (array $variant): float => (float) $variant['sale_price']) : null;
+            $data['stock_quantity'] = (int) $variants->sum(fn (array $variant): int => (int) $variant['stock_quantity']);
+        }
+
+        return $data;
+    }
+
+    private function syncVariants(StoreProductRequest $request, Product $product): void
+    {
+        $submitted = collect($request->validated('variants', []));
+        $existingVariants = $product->variants()->get()->keyBy('id');
+        $keptIds = [];
+
+        foreach ($submitted as $index => $variantData) {
+            $variant = isset($variantData['id']) ? $existingVariants->get((int) $variantData['id']) : null;
+            $attributes = [
+                'sku' => $variantData['sku'] ?? null,
+                'price' => $variantData['price'] ?? null,
+                'sale_price' => $variantData['sale_price'] ?? null,
+                'stock_quantity' => (int) $variantData['stock_quantity'],
+                'options' => collect($variantData['options'])->mapWithKeys(fn (array $option): array => [trim($option['name']) => trim($option['value'])])->all(),
+            ];
+
+            $imageInput = "variants.{$index}.image";
+            if ($request->hasFile($imageInput)) {
+                if ($variant?->image_path) {
+                    $this->mediaLibrary->delete($variant->image_path);
+                }
+                $attributes['image_path'] = $this->mediaLibrary->storeImage($request->file($imageInput), 'products/variants', $product->title);
+            } elseif (($variantData['remove_image'] ?? false) && $variant?->image_path) {
+                $this->mediaLibrary->delete($variant->image_path);
+                $attributes['image_path'] = null;
+            }
+
+            $variant = $variant ? tap($variant)->update($attributes) : $product->variants()->create($attributes);
+            $keptIds[] = $variant->id;
+        }
+
+        $removedVariants = $existingVariants->except($keptIds);
+        if ($removedVariants->isNotEmpty()) {
+            $this->mediaLibrary->delete($removedVariants->pluck('image_path')->filter()->all());
+            ProductVariant::query()->whereIn('id', $removedVariants->keys())->delete();
+        }
+
+        if ($submitted->isNotEmpty()) {
+            $product->syncAggregatesFromVariants();
+        }
+    }
+
+    private function storeMedia(StoreProductRequest $request, Product $product): void
+    {
+        foreach (['featured_image' => 'featured_image_path', 'video' => 'video_path'] as $input => $attribute) {
+            if ($request->hasFile($input)) {
+                if ($product->{$attribute}) {
+                    $input === 'video' ? Storage::disk('public')->delete($product->{$attribute}) : $this->mediaLibrary->delete($product->{$attribute});
+                }
+
+                $product->{$attribute} = $input === 'video' ? $request->file($input)->store('products', 'public') : $this->mediaLibrary->storeImage($request->file($input), 'products', $product->title);
+            }
+        }
+
+        if ($request->hasFile('gallery')) {
+            $product->gallery_paths = [...($product->gallery_paths ?? []), ...array_map(fn (UploadedFile $file): string => $this->mediaLibrary->storeImage($file, 'products/gallery', $product->title), $request->file('gallery'))];
+        }
+
+        if ($request->hasFile('digital_file')) {
+            if ($product->digital_file_path) {
+                Storage::disk('local')->delete($product->digital_file_path);
+            }
+            $file = $request->file('digital_file');
+            $product->digital_file_path = $file->store('digital-products', 'local');
+            $product->digital_file_name = $file->getClientOriginalName();
+        } elseif ($request->boolean('remove_digital_file') && $product->digital_file_path) {
+            Storage::disk('local')->delete($product->digital_file_path);
+            $product->digital_file_path = null;
+            $product->digital_file_name = null;
+        }
+
+        $product->save();
+    }
+
+    /** @return array<string, mixed> */
+    private function options(): array
+    {
+        return ['categories' => Category::query()->whereNull('parent_id')->with('childrenRecursive')->orderBy('name')->get(), 'brands' => Brand::query()->orderBy('name')->get(), 'units' => Unit::query()->orderBy('name')->get()];
+    }
+}

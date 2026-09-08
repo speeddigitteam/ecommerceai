@@ -1,0 +1,17 @@
+<x-customer-layout title="Dashboard">
+<div class="mb-7"><p class="text-sm font-semibold text-indigo-600">Welcome back, {{ $user->name }}!</p><h2 class="mt-1 text-2xl font-extrabold sm:text-3xl">Your account overview</h2><p class="mt-2 text-sm text-slate-500">Track your orders and manage your account from one place.</p></div>
+<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+@foreach ([['All orders',$orderCount,'bg-indigo-50 text-indigo-600','▣'],['In progress',$pendingOrderCount,'bg-amber-50 text-amber-600','◷'],['Completed',$completedOrderCount,'bg-emerald-50 text-emerald-600','✓'],['Total spent','৳'.number_format($totalSpent,2),'bg-violet-50 text-violet-600','৳']] as [$label,$value,$color,$icon])
+<section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div class="flex items-center justify-between gap-4"><div><p class="text-sm text-slate-500">{{ $label }}</p><p class="mt-2 text-2xl font-extrabold">{{ $value }}</p></div><span class="grid h-12 w-12 place-items-center rounded-2xl text-xl font-bold {{ $color }}">{{ $icon }}</span></div></section>
+@endforeach
+</div>
+<div class="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+<section id="recent-orders" class="overflow-hidden rounded-2xl border bg-white shadow-sm"><div class="flex items-center justify-between border-b px-5 py-4 sm:px-6"><div><h3 class="font-bold">Recent orders</h3><p class="mt-1 text-xs text-slate-500">Orders placed with {{ $user->email }}</p></div><a href="{{ route('storefront.shop') }}" class="text-sm font-semibold text-indigo-600">Shop now</a></div>
+@forelse($recentOrders as $order)
+<div class="flex flex-col gap-4 border-b px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:px-6"><div class="min-w-0"><p class="font-bold">{{ $order->order_number }}</p><p class="mt-1 truncate text-sm text-slate-500">{{ $order->items->pluck('product_title')->join(', ') }}</p><p class="mt-1 text-xs text-slate-400">{{ $order->created_at->format('d M Y, h:i A') }}</p></div><div class="flex items-center justify-between gap-4 sm:block sm:text-right"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ match($order->status){'completed'=>'bg-emerald-50 text-emerald-700','cancelled'=>'bg-rose-50 text-rose-700','shipped'=>'bg-violet-50 text-violet-700',default=>'bg-amber-50 text-amber-700'} }}">{{ ucfirst($order->status) }}</span><p class="font-bold sm:mt-2">৳{{ number_format((float)$order->total,2) }}</p></div></div>
+@empty
+<div class="px-6 py-16 text-center"><div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-indigo-50 text-2xl text-indigo-600">▣</div><h4 class="mt-4 font-bold">No orders yet</h4><p class="mt-1 text-sm text-slate-500">Your orders will appear here after checkout.</p><a href="{{ route('storefront.shop') }}" class="mt-5 inline-flex rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white">Start shopping</a></div>
+@endforelse</section>
+<aside><section class="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 p-6 text-white shadow-lg shadow-indigo-500/20"><p class="text-sm text-indigo-100">Discover something new</p><h3 class="mt-2 text-xl font-extrabold">Continue shopping</h3><p class="mt-2 text-sm leading-6 text-indigo-100">Browse the latest products and offers from our store.</p><a href="{{ route('storefront.shop') }}" class="mt-5 inline-flex rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-indigo-700">Browse products</a></section></aside>
+</div>
+</x-customer-layout>

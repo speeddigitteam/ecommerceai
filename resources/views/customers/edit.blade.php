@@ -1,0 +1,14 @@
+<x-admin-layout title="Edit Customer">
+    <div class="ds-page"><div x-cloak x-show="menuOpen" @click="menuOpen=false" class="fixed inset-0 z-30 bg-slate-950/50 lg:hidden"></div><x-admin-sidebar />
+        <main class="min-w-0 lg:pl-72"><x-admin-topbar /><div class="mx-auto max-w-3xl p-5 sm:p-8">
+            <a href="{{ route('customers.index') }}" class="text-sm font-semibold text-indigo-600">&larr; Back to customers</a>
+            <section class="ds-card mt-5 overflow-hidden"><div class="ds-card-header"><p class="text-xs font-semibold uppercase tracking-wider text-indigo-600">Customer account</p><h1 class="mt-1 text-2xl font-bold">Edit {{ $customer->name }}</h1><p class="ds-section-description">Update login details or provide a new password.</p></div>
+                <form data-ds-editable data-ds-editable-start="edit" method="POST" action="{{ route('customers.update', $customer) }}" x-data="{ showPassword:false }">@csrf @method('PUT')
+                    <div class="space-y-5 p-6"><div><label for="edit-customer-name" class="ds-field-label">Customer name</label><input id="edit-customer-name" name="name" value="{{ old('name', $customer->name) }}" required class="ds-input ds-control">@error('name')<p class="ds-error">{{ $message }}</p>@enderror</div><div><label for="edit-customer-email" class="ds-field-label">Email address</label><input id="edit-customer-email" name="email" type="email" value="{{ old('email', $customer->email) }}" required class="ds-input ds-control">@error('email')<p class="ds-error">{{ $message }}</p>@enderror</div>
+                    <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/50"><p class="mb-4 text-sm font-semibold">Change password <span class="font-normal text-slate-400">(optional)</span></p><div class="grid gap-5 sm:grid-cols-2"><div><label for="edit-customer-password" class="ds-field-label">New password</label><input id="edit-customer-password" name="password" :type="showPassword?'text':'password'" class="ds-input ds-control">@error('password')<p class="ds-error">{{ $message }}</p>@enderror</div><div><label for="edit-customer-password-confirmation" class="ds-field-label">Confirm password</label><input id="edit-customer-password-confirmation" name="password_confirmation" :type="showPassword?'text':'password'" class="ds-input ds-control"></div></div><label class="mt-3 inline-flex items-center gap-2 text-xs text-slate-500"><input type="checkbox" x-model="showPassword" class="rounded border-slate-300 text-indigo-600"> Show password</label></div></div>
+                    <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-700"><a href="{{ route('customers.index') }}" class="ds-button-secondary">Cancel</a><button class="ds-button-primary">Save changes</button></div>
+                </form>
+            </section>
+        </div></main>
+    </div>
+</x-admin-layout>
