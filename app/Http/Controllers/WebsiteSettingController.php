@@ -45,6 +45,10 @@ class WebsiteSettingController extends Controller
             }
         }
 
+        if (Storage::disk('public')->allFiles('media/website') === []) {
+            Storage::disk('public')->deleteDirectory('media/website');
+        }
+
         $settings->update($validated);
 
         return to_route('settings.website.edit')->with('status', 'Website settings updated successfully.');
@@ -53,7 +57,7 @@ class WebsiteSettingController extends Controller
     private function storeBrandImage(UploadedFile $file, string $imageType, ?string $previousPath = null): string
     {
         $disk = Storage::disk('public');
-        $directory = 'media/website';
+        $directory = 'media';
         $extension = Str::lower($file->getClientOriginalExtension());
         $baseName = Str::slug($imageType) ?: 'brand-image';
         $counter = 1;

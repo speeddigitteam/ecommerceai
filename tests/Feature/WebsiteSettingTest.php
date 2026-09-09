@@ -58,7 +58,7 @@ class WebsiteSettingTest extends TestCase
         Storage::disk('public')->assertExists($settings->logo_path);
         Storage::disk('public')->assertExists($settings->favicon_path);
         Storage::disk('public')->assertExists($settings->featured_image_path);
-        $this->assertStringStartsWith('media/website/', $settings->favicon_path);
+        $this->assertSame('media/favicon.png', $settings->favicon_path);
         $this->assertDatabaseHas('media_assets', [
             'path' => $settings->favicon_path,
             'original_name' => 'favicon.png',
@@ -78,7 +78,7 @@ class WebsiteSettingTest extends TestCase
 
         $oldPath = WebsiteSetting::query()->firstOrFail()->favicon_path;
         $oldMediaAssetId = MediaAsset::query()->where('path', $oldPath)->value('id');
-        $this->assertSame('media/website/favicon.png', $oldPath);
+        $this->assertSame('media/favicon.png', $oldPath);
 
         $this->actingAs($user)->put(route('settings.website.update'), [
             'site_name' => 'Acme Store',
@@ -88,7 +88,7 @@ class WebsiteSettingTest extends TestCase
 
         $newPath = WebsiteSetting::query()->firstOrFail()->favicon_path;
 
-        $this->assertSame('media/website/favicon-2.png', $newPath);
+        $this->assertSame('media/favicon-2.png', $newPath);
         Storage::disk('public')->assertExists($newPath);
         $this->assertDatabaseHas('media_assets', ['path' => $newPath]);
         $this->assertDatabaseMissing('media_assets', ['id' => $oldMediaAssetId]);
@@ -100,7 +100,7 @@ class WebsiteSettingTest extends TestCase
         ])->assertRedirect(route('settings.website.edit'));
 
         $this->assertSame(
-            'media/website/favicon-3.png',
+            'media/favicon-3.png',
             WebsiteSetting::query()->firstOrFail()->favicon_path,
         );
     }
@@ -120,7 +120,7 @@ class WebsiteSettingTest extends TestCase
         $faviconPath = WebsiteSetting::query()->firstOrFail()->favicon_path;
 
         Storage::disk('public')->assertExists($faviconPath);
-        $this->assertSame('media/website/favicon.jpg', $faviconPath);
+        $this->assertSame('media/favicon.jpg', $faviconPath);
         $this->assertDatabaseHas('media_assets', ['path' => $faviconPath]);
     }
 
