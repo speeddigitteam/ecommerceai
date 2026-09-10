@@ -13,7 +13,7 @@ class OrderItem extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['product_id', 'variant_id', 'product_title', 'sku', 'variant_label', 'unit_price', 'quantity', 'line_total'];
+    protected $fillable = ['product_id', 'variant_id', 'product_title', 'sku', 'variant_label', 'unit_price', 'pricing_type', 'quantity', 'line_total'];
 
     public function order(): BelongsTo
     {

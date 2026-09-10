@@ -4,15 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\WholesalePricing;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CartController extends Controller
 {
+    public function __construct(private readonly WholesalePricing $wholesalePricing) {}
+
     public function index(Request $request): View
     {
         return view('storefront.cart', $this->cartData($request));
@@ -85,13 +89,14 @@ class CartController extends Controller
         return to_route('cart.index')->with('status', 'Product removed from your cart.');
     }
 
-    /** @return array{items: Collection<int, array{product: Product, variant: ?ProductVariant, quantity: int, lineTotal: float}>, subtotal: float} */
+    /** @return array{items: Collection<int, array{product: Product, variant: ?ProductVariant, quantity: int, unitPrice: float, pricingType: string, minimumWholesaleQuantity: int|null, lineTotal: float}>, subtotal: float} */
     public function cartData(Request $request): array
     {
         $cart = $request->session()->get('cart', []);
         $productIds = collect(array_keys($cart))->map(fn (int|string $key): int => (int) Str::before((string) $key, ':'))->unique();
-        $products = Product::query()->with(['categories', 'variants'])->whereIn('id', $productIds)->get()->keyBy('id');
-        $items = collect($cart)->map(function (int $quantity, int|string $cartKey) use ($products): ?array {
+        $products = Product::query()->with(['categories', 'wholesalePriceTiers', 'variants.wholesalePriceTiers'])->whereIn('id', $productIds)->get()->keyBy('id');
+        $customer = $request->user();
+        $items = collect($cart)->map(function (int $quantity, int|string $cartKey) use ($products, $customer): ?array {
             [$productId, $variantId] = array_pad(explode(':', (string) $cartKey, 2), 2, null);
             $product = $products->get((int) $productId);
             if (! $product || $product->status !== 'published' || $product->visibility !== 'public') {
@@ -101,17 +106,37 @@ class CartController extends Controller
             if ($variantId !== null && ! $variant) {
                 return null;
             }
-            $unitPrice = $variant?->current_price ?? $product->current_price;
+            $retailPrice = $variant?->current_price ?? $product->current_price;
             $stock = $variant?->stock_quantity ?? $product->stock_quantity;
-            if ($unitPrice === null) {
+            if ($retailPrice === null) {
                 return null;
             }
             $safeQuantity = min($quantity, $stock);
+            $pricing = $this->wholesalePricing->resolve($product, $variant, $safeQuantity, $customer);
 
-            return $safeQuantity > 0 ? ['product' => $product, 'variant' => $variant, 'quantity' => $safeQuantity, 'lineTotal' => $unitPrice * $safeQuantity] : null;
+            return $safeQuantity > 0 ? [
+                'product' => $product,
+                'variant' => $variant,
+                'quantity' => $safeQuantity,
+                'unitPrice' => $pricing['unit_price'],
+                'pricingType' => $pricing['pricing_type'],
+                'minimumWholesaleQuantity' => $pricing['minimum_quantity'],
+                'lineTotal' => $pricing['unit_price'] * $safeQuantity,
+            ] : null;
         })->filter()->values();
 
         return ['items' => $items, 'subtotal' => (float) $items->sum('lineTotal')];
+    }
+
+    private function ensureWholesaleMinimum(Product $product, ?ProductVariant $variant, int $quantity, Request $request): void
+    {
+        $product->loadMissing(['wholesalePriceTiers', 'variants.wholesalePriceTiers']);
+        $pricing = $this->wholesalePricing->resolve($product, $variant, $quantity, $request->user());
+        if ($pricing['minimum_quantity'] !== null && $quantity < $pricing['minimum_quantity']) {
+            throw ValidationException::withMessages([
+                'quantity' => 'The minimum wholesale quantity is '.$pricing['minimum_quantity'].'.',
+            ]);
+        }
     }
 
     private function resolveVariant(Product $product, ?int $variantId): ?ProductVariant

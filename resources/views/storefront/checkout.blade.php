@@ -114,7 +114,7 @@
                     <h3 class="mt-0.5 truncate text-sm font-semibold text-slate-950">
                         <a href="{{ route('catalog.show', $item['product']->slug) }}">{{ $item['product']->title }}</a>
                     </h3>
-                    <p class="mt-1 text-xs font-medium text-slate-600"><span class="currency-symbol">&#2547;</span>{{ number_format($item['product']->current_price, 2) }}</p>
+                    <p class="mt-1 text-xs font-medium text-slate-600"><span class="currency-symbol">&#2547;</span>{{ number_format($item['unitPrice'], 2) }}@if($item['pricingType'] === 'wholesale') <span class="ml-1 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase text-violet-700">Wholesale</span>@endif</p>
                 </div>
 
                 <div class="flex flex-col items-end justify-between">

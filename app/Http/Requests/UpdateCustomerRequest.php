@@ -28,6 +28,8 @@ class UpdateCustomerRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($this->route('customer'))],
             'password' => ['nullable', 'confirmed', Password::defaults()],
+            'wholesale_status' => ['sometimes', 'required', Rule::in(['retail', 'pending', 'approved', 'rejected'])],
+            'business_name' => ['nullable', 'string', 'max:255', 'required_if:wholesale_status,approved'],
         ];
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Requests\StoreOrderRequest;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\DeliveryCharges;
+use App\Services\WholesalePricing;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,10 @@ use Illuminate\View\View;
 
 class CheckoutController extends Controller
 {
-    public function __construct(private readonly DeliveryCharges $deliveryCharges) {}
+    public function __construct(
+        private readonly DeliveryCharges $deliveryCharges,
+        private readonly WholesalePricing $wholesalePricing,
+    ) {}
 
     public function create(Request $request, CartController $cartController): View|RedirectResponse
     {
@@ -50,9 +54,10 @@ class CheckoutController extends Controller
                 'delivery_area' => $validated['delivery_area'] ?? null,
                 'total' => $cart['subtotal'] + $shippingCost,
                 'status' => 'pending',
+                'order_type' => $cart['items']->contains(fn (array $item): bool => $item['pricingType'] === 'wholesale') ? 'wholesale' : 'retail',
             ]);
             foreach ($cart['items'] as $item) {
-                $order->items()->create(['product_id' => $item['product']->id, 'product_title' => $item['product']->title, 'sku' => $item['product']->sku, 'unit_price' => $item['product']->current_price, 'quantity' => $item['quantity'], 'line_total' => $item['lineTotal']]);
+                $order->items()->create(['product_id' => $item['product']->id, 'product_title' => $item['product']->title, 'sku' => $item['product']->sku, 'unit_price' => $item['unitPrice'], 'pricing_type' => $item['pricingType'], 'quantity' => $item['quantity'], 'line_total' => $item['lineTotal']]);
                 if (! $item['product']->isDigital()) {
                     $item['product']->decrement('stock_quantity', $item['quantity']);
                 }
@@ -82,7 +87,12 @@ class CheckoutController extends Controller
             $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
             abort_if($quantity > $lockedProduct->stock_quantity, 422, 'This product no longer has enough stock.');
 
-            $subtotal = $lockedProduct->current_price * $quantity;
+            $lockedProduct->load('wholesalePriceTiers');
+            $pricing = $this->wholesalePricing->resolve($lockedProduct, null, $quantity, auth()->user());
+            if ($pricing['minimum_quantity'] !== null && $quantity < $pricing['minimum_quantity']) {
+                abort(422, 'The wholesale minimum quantity is '.$pricing['minimum_quantity'].'.');
+            }
+            $subtotal = $pricing['unit_price'] * $quantity;
             $order = $this->createOrder([
                 ...collect($validated)->only(['customer_name', 'customer_phone', 'customer_email', 'shipping_address', 'customer_note', 'payment_method'])->all(),
                 'subtotal' => $subtotal,
@@ -90,12 +100,14 @@ class CheckoutController extends Controller
                 'delivery_area' => $validated['delivery_area'] ?? null,
                 'total' => $subtotal + $shippingCost,
                 'status' => 'pending',
+                'order_type' => $pricing['pricing_type'],
             ]);
             $order->items()->create([
                 'product_id' => $lockedProduct->id,
                 'product_title' => $lockedProduct->title,
                 'sku' => $lockedProduct->sku,
-                'unit_price' => $lockedProduct->current_price,
+                'unit_price' => $pricing['unit_price'],
+                'pricing_type' => $pricing['pricing_type'],
                 'quantity' => $quantity,
                 'line_total' => $subtotal,
             ]);

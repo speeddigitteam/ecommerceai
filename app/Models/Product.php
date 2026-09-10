@@ -53,6 +53,11 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function wholesalePriceTiers(): HasMany
+    {
+        return $this->hasMany(WholesalePriceTier::class)->orderBy('minimum_quantity');
+    }
+
     public function reviews(): HasMany
     {
         return $this->hasMany(ProductReview::class);

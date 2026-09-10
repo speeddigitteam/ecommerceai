@@ -114,6 +114,12 @@
                 <div class="mt-3 rounded-xl border border-slate-200 p-3 text-sm"><strong>{{ max($deliveryRates) === 0.0 ? 'Free Delivery' : 'Delivery charge' }}</strong>@if(max($deliveryRates) > 0)<div class="mt-2 flex flex-wrap gap-3 text-slate-500">@foreach(App\Services\DeliveryCharges::AREAS as $area => $label)<span>{{ $label }}: &#2547;{{ number_format($deliveryRates[$area], 2) }}</span>@endforeach</div>@endif</div>
                 <div class="mt-3 flex flex-wrap gap-2 text-sm text-slate-600">
                     <span class="rounded-xl border border-amber-300 px-3 py-2">Price: <strong class="font-bold text-slate-950" x-text="money(currentPrice) + '৳'">{{ number_format($product->current_price, 0) }}৳</strong><template x-if="currentSalePrice"><strong class="ml-1 font-bold text-slate-400 line-through" x-text="money(currentRegularPrice) + '৳'">@if($product->sale_price !== null){{ number_format($product->price, 0) }}৳@endif</strong></template></span>
+                    @if(auth()->user()?->isApprovedWholesaler() && $product->wholesalePriceTiers->whereNull('product_variant_id')->isNotEmpty())
+                        <div class="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm">
+                            <p class="font-bold text-violet-800">Wholesale price tiers</p>
+                            <div class="mt-2 flex flex-wrap gap-2">@foreach($product->wholesalePriceTiers->whereNull('product_variant_id') as $tier)<span class="rounded-full bg-white px-3 py-1.5 font-semibold text-violet-700">{{ $tier->minimum_quantity }}+ units: <span class="currency-symbol">&#2547;</span>{{ number_format($tier->unit_price, 2) }}</span>@endforeach</div>
+                        </div>
+                    @endif
                     @if ($product->isDigital())
                         <span class="rounded-lg bg-indigo-50 px-2.5 py-1.5 font-semibold text-indigo-700">Instant download</span>
                     @else
@@ -250,7 +256,7 @@
     </div>
 
     <x-modal name="direct-order" :show="$errors->any()" maxWidth="2xl" focusable>
-        <form method="POST" action="{{ route('direct-order.store', $product) }}" x-data="{ quantity: {{ max(1, (int) old('quantity', 1)) }}, maximum: {{ $product->stock_quantity }}, unitPrice: {{ $product->current_price }}, isDigital: {{ $product->isDigital() ? 'true' : 'false' }}, deliveryArea: @js(old('delivery_area', 'dhaka_city')), charges: @js($deliveryRates), money(value) { return new Intl.NumberFormat('en-BD', { maximumFractionDigits: 0 }).format(value) }, get subtotal() { return this.unitPrice * this.quantity }, get shipping() { return this.isDigital ? 0 : this.charges[this.deliveryArea] }, get total() { return this.subtotal + this.shipping } }" class="bg-slate-50 text-slate-950">
+        <form method="POST" action="{{ route('direct-order.store', $product) }}" x-data="{ quantity: {{ max(1, (int) old('quantity', 1)) }}, maximum: {{ $product->stock_quantity }}, retailPrice: {{ $product->current_price }}, tiers: @js(auth()->user()?->isApprovedWholesaler() ? $product->wholesalePriceTiers->whereNull('product_variant_id')->values() : []), get unitPrice() { const tier = [...this.tiers].reverse().find(tier => this.quantity >= tier.minimum_quantity); return tier ? Number(tier.unit_price) : this.retailPrice; }, isDigital: {{ $product->isDigital() ? 'true' : 'false' }}, deliveryArea: @js(old('delivery_area', 'dhaka_city')), charges: @js($deliveryRates), money(value) { return new Intl.NumberFormat('en-BD', { maximumFractionDigits: 0 }).format(value) }, get subtotal() { return this.unitPrice * this.quantity }, get shipping() { return this.isDigital ? 0 : this.charges[this.deliveryArea] }, get total() { return this.subtotal + this.shipping } }" class="bg-slate-50 text-slate-950">
             @csrf
             <input type="hidden" name="payment_method" value="cash_on_delivery">
             <header class="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-7">

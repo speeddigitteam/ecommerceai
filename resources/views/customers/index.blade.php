@@ -40,7 +40,7 @@
                                                 @else
                                                     <div class="grid h-10 w-10 place-items-center rounded-full bg-indigo-100 font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">{{ strtoupper(substr($customer->name, 0, 1)) }}</div>
                                                 @endif
-                                                <span class="font-semibold">{{ $customer->name }}</span>
+                                                <div><span class="font-semibold">{{ $customer->name }}</span>@if($customer->wholesale_status === 'approved')<span class="ml-2 rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase text-violet-700">Wholesale</span>@endif @if($customer->business_name)<p class="mt-1 text-xs text-slate-400">{{ $customer->business_name }}</p>@endif</div>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 text-slate-500 dark:text-slate-400">{{ $customer->email }}</td>

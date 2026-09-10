@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'profile_image_path', 'role'])]
+#[Fillable(['name', 'email', 'password', 'profile_image_path', 'role', 'wholesale_status', 'business_name'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -37,6 +37,11 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;
+    }
+
+    public function isApprovedWholesaler(): bool
+    {
+        return $this->role === UserRole::Customer && $this->wholesale_status === 'approved';
     }
 
     public function homeRoute(): string

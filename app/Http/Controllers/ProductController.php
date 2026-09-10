@@ -36,6 +36,7 @@ class ProductController extends Controller
         $product->categories()->sync($request->validated('category_ids', []));
         $this->storeMedia($request, $product);
         $this->syncVariants($request, $product);
+        $this->syncWholesaleTiers($request, $product);
 
         return to_route('products.index')->with('status', 'Product created successfully.');
     }
@@ -47,7 +48,7 @@ class ProductController extends Controller
 
     public function edit(Product $product): View
     {
-        return view('products.form', [...$this->options(), 'product' => $product->load('variants')]);
+        return view('products.form', [...$this->options(), 'product' => $product->load(['variants', 'wholesalePriceTiers'])]);
     }
 
     public function update(UpdateProductRequest $request, Product $product): RedirectResponse
@@ -56,6 +57,7 @@ class ProductController extends Controller
         $product->categories()->sync($request->validated('category_ids', []));
         $this->storeMedia($request, $product);
         $this->syncVariants($request, $product);
+        $this->syncWholesaleTiers($request, $product);
 
         return to_route('products.index')->with('status', 'Product updated successfully.');
     }
@@ -77,7 +79,7 @@ class ProductController extends Controller
     /** @return array<string, mixed> */
     private function data(StoreProductRequest $request, ?Product $product = null): array
     {
-        $data = $request->safe()->except(['featured_image', 'gallery', 'video', 'category_ids', 'variants', 'digital_file', 'remove_digital_file']);
+        $data = $request->safe()->except(['featured_image', 'gallery', 'video', 'category_ids', 'variants', 'wholesale_tiers', 'digital_file', 'remove_digital_file']);
         $data['slug'] = ($data['slug'] ?? null) ?: Str::slug($data['title']);
         $data['tags'] = array_values(array_filter(array_map('trim', explode(',', $data['tags'] ?? ''))));
         $data['specifications'] = collect($data['specifications'] ?? [])->map(fn (array $section): array => [
@@ -107,6 +109,17 @@ class ProductController extends Controller
         }
 
         return $data;
+    }
+
+    private function syncWholesaleTiers(StoreProductRequest $request, Product $product): void
+    {
+        $product->wholesalePriceTiers()->whereNull('product_variant_id')->delete();
+        foreach (collect($request->validated('wholesale_tiers', []))->filter(fn (array $tier): bool => filled($tier['minimum_quantity'] ?? null) && filled($tier['unit_price'] ?? null)) as $tier) {
+            $product->wholesalePriceTiers()->create([
+                'minimum_quantity' => $tier['minimum_quantity'],
+                'unit_price' => $tier['unit_price'],
+            ]);
+        }
     }
 
     private function syncVariants(StoreProductRequest $request, Product $product): void

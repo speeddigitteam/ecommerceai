@@ -11,6 +11,7 @@
     'image_path' => $variant->image_path,
     'options' => collect($variant->options ?? [])->map(fn ($value, $name) => ['name' => $name, 'value' => $value])->values()->all(),
 ])->values()->all()))
+@php($wholesaleTierRows = collect(old('wholesale_tiers', $editing ? $product->wholesalePriceTiers->whereNull('product_variant_id')->map(fn ($tier) => ['minimum_quantity' => $tier->minimum_quantity, 'unit_price' => $tier->unit_price])->values()->all() : []))->pad(3, ['minimum_quantity' => '', 'unit_price' => '']))
 <x-admin-layout title="{{ $editing ? 'Edit Product' : 'Add Product' }}">
     <x-slot:head>
         <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
@@ -184,6 +185,19 @@
                                 </div>
                             </div>
                         </section>
+                        <section class="ds-card ds-card-body">
+                            <div><h2 class="ds-section-title">Wholesale pricing</h2><p class="ds-section-description">Set up to three quantity prices for approved wholesale customers. Leave unused rows empty.</p></div>
+                            <div class="mt-5 grid gap-3">
+                                @foreach($wholesaleTierRows as $index => $tier)
+                                    <div class="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-2">
+                                        <div><label class="ds-field-label">Minimum quantity</label><input name="wholesale_tiers[{{ $index }}][minimum_quantity]" value="{{ $tier['minimum_quantity'] }}" type="number" min="2" class="ds-input ds-control"></div>
+                                        <div><label class="ds-field-label">Wholesale unit price</label><input name="wholesale_tiers[{{ $index }}][unit_price]" value="{{ $tier['unit_price'] }}" type="number" min="0" step="0.01" class="ds-input ds-control"></div>
+                                    </div>
+                                @endforeach
+                            </div>
+                            @error('wholesale_tiers.*.minimum_quantity')<p class="ds-error">{{ $message }}</p>@enderror
+                            @error('wholesale_tiers.*.unit_price')<p class="ds-error">{{ $message }}</p>@enderror
+                        </section>
                         <section
                             x-data="{
                                 variants: @js($variantRows),
@@ -279,7 +293,7 @@
                             <h2 class="ds-section-title">Delivery charge</h2>
                             <label for="delivery-charge-type" class="ds-field-label mt-4">Delivery option</label>
                             <select id="delivery-charge-type" name="delivery_charge_type" x-model="deliveryType" class="ds-input ds-control">
-                                <option value="default">Default — use delivery settings</option><option value="free">Free delivery</option><option value="custom">Custom charges</option>
+                                <option value="default">Default â€” use delivery settings</option><option value="free">Free delivery</option><option value="custom">Custom charges</option>
                             </select>
                             @error('delivery_charge_type')<p class="ds-error">{{ $message }}</p>@enderror
                             <div x-show="deliveryType === 'custom'" class="mt-4 grid gap-4 sm:grid-cols-3">
