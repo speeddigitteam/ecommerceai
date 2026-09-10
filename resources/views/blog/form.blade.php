@@ -3,7 +3,18 @@
 <x-admin-layout title="{{ $editing ? 'Edit Blog' : 'Add New Blog' }}">
     <x-slot:head>
         <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
-        <style>.blog-content-editor .ck-editor__editable{min-height:380px}.dark .blog-content-editor .ck-toolbar{background:#172033;border-color:#334155}.dark .blog-content-editor .ck-editor__editable{background:#1e293b;color:#e2e8f0;border-color:#334155}</style>
+        <style>
+            .blog-content-editor .ck-editor__editable { min-height: 380px; }
+            .blog-content-editor .ck-content h1 { margin: 1.5rem 0 .75rem; font-size: 2.25rem; font-weight: 800; line-height: 1.2; }
+            .blog-content-editor .ck-content h2 { margin: 1.35rem 0 .7rem; font-size: 1.875rem; font-weight: 750; line-height: 1.25; }
+            .blog-content-editor .ck-content h3 { margin: 1.2rem 0 .6rem; font-size: 1.5rem; font-weight: 700; line-height: 1.3; }
+            .blog-content-editor .ck-content h4 { margin: 1rem 0 .5rem; font-size: 1.25rem; font-weight: 700; line-height: 1.35; }
+            .blog-content-editor .ck-content h5 { margin: .9rem 0 .45rem; font-size: 1.125rem; font-weight: 700; line-height: 1.4; }
+            .blog-content-editor .ck-content h6 { margin: .8rem 0 .4rem; font-size: 1rem; font-weight: 700; line-height: 1.4; text-transform: uppercase; letter-spacing: .04em; }
+            .blog-content-editor .ck-content p { margin: .75rem 0; }
+            .dark .blog-content-editor .ck-toolbar { background: #172033; border-color: #334155; }
+            .dark .blog-content-editor .ck-editor__editable { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+        </style>
     </x-slot:head>
     <div class="ds-page">
         <div x-cloak x-show="menuOpen" @click="menuOpen=false" class="fixed inset-0 z-30 bg-slate-950/50 lg:hidden"></div>
