@@ -41,5 +41,6 @@ class AiContentGenerationTest extends TestCase
         WebsiteSetting::factory()->create(['openai_enabled' => false]);
         $this->actingAs($admin)->postJson(route('ai-content.generate'), ['content_type' => 'blog', 'topic' => 'Shopping guide', 'language' => 'English', 'tone' => 'Professional', 'length' => 'short'])->assertUnprocessable()->assertJsonValidationErrors('openai');
         Http::assertNothingSent();
+        $this->actingAs($admin)->get(route('blog.create'))->assertOk()->assertSee('Configure AI Content');
     }
 }

@@ -1,6 +1,8 @@
 @props(['type'])
 @php($aiSettings = App\Models\WebsiteSetting::query()->first())
-@if($aiSettings?->openai_enabled)
+@if(! $aiSettings?->openai_enabled)
+<section class="ds-card ds-card-body mb-6"><div class="flex flex-wrap items-center justify-between gap-4"><div><p class="text-sm font-semibold text-indigo-600">OpenAI</p><h2 class="mt-1 text-lg font-bold">AI content generator</h2><p class="mt-1 text-sm text-slate-500">Connect and enable OpenAI to generate {{ $type }} content.</p></div><a href="{{ route('settings.ai-content.edit') }}" class="ds-button-primary">Configure AI Content</a></div></section>
+@else
 <section x-data="{loading:false,error:'',result:null,language:@js($aiSettings->openai_default_language ?: 'Bangla'),tone:@js($aiSettings->openai_default_tone ?: 'Professional'),length:'medium',
 async generate(){this.loading=true;this.error='';this.result=null;const form=this.$root.closest('form');const topic=form.querySelector('[name=title]')?.value||'';if(!topic){this.error='Enter a title or topic first.';this.loading=false;return}
 const context=form.querySelector('[name=short_description]')?.value||form.querySelector('[name=excerpt]')?.value||'';const keywords=form.querySelector('[name=focus_keyword]')?.value||'';
