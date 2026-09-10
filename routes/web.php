@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AccountingController;
+use App\Http\Controllers\AiContentController;
+use App\Http\Controllers\AiContentSettingController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AnalyticsSettingController;
 use App\Http\Controllers\BackupSettingController;
@@ -14,6 +16,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CourierIntegrationController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerDashboardController;
+use App\Http\Controllers\DeliveryChargeSettingController;
 use App\Http\Controllers\DigitalDownloadController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
@@ -144,10 +147,14 @@ Route::middleware(['admin', 'verified'])->group(function () {
         Route::delete('/units/{unit}', 'destroy')->name('units.destroy');
     });
 
+    Route::get('/settings/ai-content', [AiContentSettingController::class, 'edit'])->name('settings.ai-content.edit');
+    Route::put('/settings/ai-content', [AiContentSettingController::class, 'update'])->name('settings.ai-content.update');
+    Route::post('/ai-content/generate', AiContentController::class)->middleware('throttle:10,1')->name('ai-content.generate');
+
     Route::get('/settings/website', [WebsiteSettingController::class, 'edit'])->name('settings.website.edit');
     Route::put('/settings/website', [WebsiteSettingController::class, 'update'])->name('settings.website.update');
-    Route::get('/settings/delivery-charges', [\App\Http\Controllers\DeliveryChargeSettingController::class, 'edit'])->name('settings.delivery-charges.edit');
-    Route::put('/settings/delivery-charges', [\App\Http\Controllers\DeliveryChargeSettingController::class, 'update'])->name('settings.delivery-charges.update');
+    Route::get('/settings/delivery-charges', [DeliveryChargeSettingController::class, 'edit'])->name('settings.delivery-charges.edit');
+    Route::put('/settings/delivery-charges', [DeliveryChargeSettingController::class, 'update'])->name('settings.delivery-charges.update');
     Route::get('/settings/content', [WebsiteContentController::class, 'edit'])->name('settings.content.edit');
     Route::put('/settings/content', [WebsiteContentController::class, 'update'])->name('settings.content.update');
     Route::get('/settings/hero', [HeroSettingController::class, 'edit'])->name('settings.hero.edit');

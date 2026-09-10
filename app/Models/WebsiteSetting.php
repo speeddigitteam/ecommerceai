@@ -55,6 +55,12 @@ class WebsiteSetting extends Model
         'ga_property_id',
         'ga_service_account_json',
         'search_console_verification',
+        'openai_enabled',
+        'openai_api_key',
+        'openai_model',
+        'openai_max_output_tokens',
+        'openai_default_language',
+        'openai_default_tone',
     ];
 
     /** @return list<array{question: string, answer: string}> */
@@ -109,6 +115,9 @@ class WebsiteSetting extends Model
             'backup_last_run_at' => 'datetime',
             'ga_tracking_enabled' => 'boolean',
             'ga_service_account_json' => 'encrypted',
+            'openai_enabled' => 'boolean',
+            'openai_api_key' => 'encrypted',
+            'openai_max_output_tokens' => 'integer',
         ];
     }
 }

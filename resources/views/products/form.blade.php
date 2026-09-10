@@ -37,6 +37,7 @@
         <main class="min-w-0 lg:pl-72"><x-admin-topbar /><form @if($editing) data-ds-editable data-ds-editable-start="edit" @endif method="POST" action="{{ $editing ? route('products.update', $product) : route('products.store') }}" enctype="multipart/form-data">@csrf @if($editing) @method('PUT') @endif
             <div class="mx-auto max-w-[1500px] p-5 sm:p-8"><div class="mb-6 flex flex-wrap items-center justify-between gap-4"><div><a href="{{ route('products.index') }}" class="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600"><svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 18-6-6 6-6"/></svg>Products</a><h1 class="mt-2 text-2xl font-bold">{{ $editing ? 'Edit product' : 'Add new product' }}</h1></div><a href="{{ $editing ? route('products.show', $product) : '#' }}" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold dark:border-slate-700">Preview</a></div>
                 @if ($errors->any())<div class="mb-6 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">Please fix the highlighted fields.</div>@endif
+                <x-ai-content-generator type="product" />
                 <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
                     <div class="space-y-6">
                         <section x-data="{ title: @js(old('title', $product->title)), slug: @js(old('slug', $product->slug)), savedSlug: @js(old('slug', $product->slug)), editingSlug: false, init() { this.$watch('title', value => window.dispatchEvent(new CustomEvent('product-title-changed', { detail: value }))); this.$watch('slug', value => window.dispatchEvent(new CustomEvent('product-slug-changed', { detail: value }))); this.$nextTick(() => { window.dispatchEvent(new CustomEvent('product-title-changed', { detail: this.title })); window.dispatchEvent(new CustomEvent('product-slug-changed', { detail: this.slug })) }) }, slugify(value) { return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') }, startEditing() { this.savedSlug = this.slug; this.editingSlug = true; this.$nextTick(() => this.$refs.slugInput.focus()) }, acceptSlug() { this.slug = this.slugify(this.slug || this.title); this.savedSlug = this.slug; this.editingSlug = false }, cancelEditing() { this.slug = this.savedSlug; this.editingSlug = false } }" class="ds-card ds-card-body">
@@ -522,6 +523,7 @@
                 },
                 table: { contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells'] }
             }).then(editor => {
+                window.productDescriptionEditor = editor;
                 const notifySeoAnalyzer = () => window.dispatchEvent(new CustomEvent('product-description-changed', { detail: editor.getData() }));
                 editor.model.document.on('change:data', notifySeoAnalyzer);
                 notifySeoAnalyzer();

@@ -14,6 +14,7 @@
                 <div class="mx-auto max-w-[1500px] p-5 sm:p-8">
                     <div class="mb-6 flex flex-wrap items-center justify-between gap-4"><div><a href="{{ route('blog.index') }}" class="text-sm font-semibold text-indigo-600">&larr; Blog</a><h1 class="mt-2 text-2xl font-bold">{{ $editing ? 'Edit blog' : 'Add new blog' }}</h1></div>@if($editing)<a href="{{ route('blog.show', $post) }}" class="ds-button-secondary">Preview</a>@endif</div>
                     @if ($errors->any())<div class="mb-6 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">Please fix the highlighted fields.</div>@endif
+                    <x-ai-content-generator type="blog" />
                     <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
                         <div class="space-y-6">
                             <section x-data="{ title: @js(old('title', $post->title)), slug: @js(old('slug', $post->slug)), editingSlug:false, slugify(v){return v.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')}}" class="ds-card ds-card-body">
@@ -36,5 +37,5 @@
             </form>
         </main>
     </div>
-    <x-slot:scripts><script>ClassicEditor.create(document.querySelector('#blog-content'),{toolbar:{items:['heading','|','bold','italic','link','bulletedList','numberedList','|','blockQuote','insertTable','mediaEmbed','|','undo','redo'],shouldNotGroupWhenFull:true}}).then(editor=>{const field=document.querySelector('#blog-content');field.closest('form')?.dispatchEvent(new CustomEvent('ds-editor-ready',{detail:{editor,control:field,wrapper:editor.ui.view.element}}));}).catch(error=>console.error(error));</script></x-slot:scripts>
+    <x-slot:scripts><script>ClassicEditor.create(document.querySelector('#blog-content'),{toolbar:{items:['heading','|','bold','italic','link','bulletedList','numberedList','|','blockQuote','insertTable','mediaEmbed','|','undo','redo'],shouldNotGroupWhenFull:true}}).then(editor=>{window.blogContentEditor=editor;const field=document.querySelector('#blog-content');field.closest('form')?.dispatchEvent(new CustomEvent('ds-editor-ready',{detail:{editor,control:field,wrapper:editor.ui.view.element}}));}).catch(error=>console.error(error));</script></x-slot:scripts>
 </x-admin-layout>
