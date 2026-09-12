@@ -1,6 +1,6 @@
 <x-admin-layout :title="ucfirst($channel).' Providers'">
     <div
-        x-data="{ editing: null, remove: null, showPassword: false }"
+        x-data="{ editing: null, remove: null, showPassword: false, encryption: 'tls' }"
         class="min-h-screen bg-slate-50 text-slate-900 dark:bg-[#111827] dark:text-slate-100"
     >
         <x-admin-sidebar />
@@ -51,7 +51,7 @@
                                         <legend class="text-xs font-bold uppercase tracking-wider text-slate-400">Connection</legend>
                                         <label class="block text-sm font-semibold">SMTP host <span class="text-rose-500">*</span><input name="host" required :value="editing?.settings?.host || ''" placeholder="smtp.gmail.com" class="mt-2 w-full rounded-xl border-slate-300 px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-800"></label>
                                         <div class="grid grid-cols-[1fr_110px] gap-3">
-                                            <label class="text-sm font-semibold">Encryption<select name="encryption" :value="editing?.settings?.encryption || 'tls'" class="mt-2 w-full rounded-xl border-slate-300 text-sm dark:border-slate-700 dark:bg-slate-800"><option value="tls">TLS</option><option value="ssl">SSL</option><option value="none">None</option></select></label>
+                                            <label class="text-sm font-semibold">Encryption<select name="encryption" x-model="encryption" x-init="$watch('editing', value => encryption = value?.settings?.encryption || 'tls')" class="mt-2 w-full rounded-xl border-slate-300 text-sm dark:border-slate-700 dark:bg-slate-800"><option value="tls">TLS</option><option value="ssl">SSL</option><option value="none">None</option></select></label>
                                             <label class="text-sm font-semibold">Port <span class="text-rose-500">*</span><input name="port" type="number" required :value="editing?.settings?.port || 587" class="mt-2 w-full rounded-xl border-slate-300 px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-800"></label>
                                         </div>
                                     </fieldset>
@@ -80,7 +80,7 @@
                             </div>
 
                             <div class="grid grid-cols-2 gap-3 border-t border-slate-200 p-5 dark:border-slate-800">
-                                <button type="button" @click="editing = null; showPassword = false; $el.closest('form').reset()" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">Reset</button>
+                                <button type="button" @click="editing = null; encryption = 'tls'; showPassword = false; $el.closest('form').reset()" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">Reset</button>
                                 <button type="submit" class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-700" x-text="editing ? 'Save changes' : 'Save provider'"></button>
                             </div>
                         </form>
