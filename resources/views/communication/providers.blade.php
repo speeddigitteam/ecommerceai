@@ -35,7 +35,7 @@
 
                         <form method="POST" :action="editing ? '{{ url('/communication/providers/'.$channel) }}/' + editing.id : '{{ route('communication.providers.store', $channel) }}'">
                             @csrf
-                            <input x-show="editing" type="hidden" name="_method" value="PUT">
+                            <input x-show="editing" :disabled="!editing" type="hidden" name="_method" value="PUT">
                             <input type="hidden" name="driver" value="{{ $channel === 'email' ? 'smtp' : 'http' }}">
 
                             <div class="space-y-5 p-5">

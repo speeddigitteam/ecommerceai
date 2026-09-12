@@ -23,7 +23,7 @@ class CommunicationManagementTest extends TestCase
 
         $this->assertSame('secret-value', $provider->settings['password']);
         $this->assertStringNotContainsString('secret-value', $provider->getRawOriginal('settings'));
-        $this->actingAs($admin)->get(route('communication.providers.index', 'email'))->assertOk()->assertSee('Primary SMTP');
+        $this->actingAs($admin)->get(route('communication.providers.index', 'email'))->assertOk()->assertSee('Primary SMTP')->assertSee(':disabled="!editing"', false);
         $this->actingAs($admin)->patch(route('communication.providers.toggle', ['email', $provider]))->assertSessionHasNoErrors();
         $this->assertTrue($provider->fresh()->is_active);
     }
