@@ -21,6 +21,9 @@ class AiContentSettingController extends Controller
         if ($request->filled('openai_api_key')) {
             $validated['openai_api_key'] = $request->string('openai_api_key')->toString();
         }
+        if ($validated['openai_enabled']) {
+            $validated['anthropic_enabled'] = false;
+        }
         $settings->update($validated);
 
         return to_route('settings.ai-content.edit')->with('status', 'AI content settings updated successfully.');

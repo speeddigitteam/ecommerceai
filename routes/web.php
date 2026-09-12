@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountingController;
+use App\Http\Controllers\AiApiSettingController;
 use App\Http\Controllers\AiContentController;
 use App\Http\Controllers\AiContentSettingController;
 use App\Http\Controllers\AnalyticsController;
@@ -149,6 +150,9 @@ Route::middleware(['admin', 'verified'])->group(function () {
 
     Route::get('/settings/ai-content', [AiContentSettingController::class, 'edit'])->name('settings.ai-content.edit');
     Route::put('/settings/ai-content', [AiContentSettingController::class, 'update'])->name('settings.ai-content.update');
+    Route::get('/settings/ai-apis', [AiApiSettingController::class, 'index'])->name('settings.ai-apis.index');
+    Route::put('/settings/ai-apis/{provider}', [AiApiSettingController::class, 'update'])->name('settings.ai-apis.update');
+    Route::patch('/settings/ai-apis/{provider}/status', [AiApiSettingController::class, 'toggle'])->name('settings.ai-apis.toggle');
     Route::post('/ai-content/generate', AiContentController::class)->middleware('throttle:10,1')->name('ai-content.generate');
 
     Route::get('/settings/website', [WebsiteSettingController::class, 'edit'])->name('settings.website.edit');
