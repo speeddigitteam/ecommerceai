@@ -16,12 +16,36 @@ class AiContentGenerationTest extends TestCase
     {
         $admin = User::factory()->create();
         $settings = WebsiteSetting::factory()->create(['openai_api_key' => 'sk-existing']);
-        $this->actingAs($admin)->get(route('settings.ai-content.edit'))->assertOk()->assertSee('AI content settings');
+        $this->actingAs($admin)->get(route('settings.ai-content.edit'))->assertOk()->assertSee('AI content settings')->assertSee('API key configured');
         $this->actingAs($admin)->put(route('settings.ai-content.update'), ['openai_enabled' => '1', 'openai_api_key' => '', 'openai_model' => 'gpt-5.2', 'openai_max_output_tokens' => 2000, 'openai_default_language' => 'Bangla', 'openai_default_tone' => 'Friendly'])->assertRedirect(route('settings.ai-content.edit'));
         $settings->refresh();
         $this->assertTrue($settings->openai_enabled);
         $this->assertSame('sk-existing', $settings->openai_api_key);
         $this->assertSame('Friendly', $settings->openai_default_tone);
+    }
+
+    public function test_admin_cannot_enable_ai_content_without_an_api_key(): void
+    {
+        $admin = User::factory()->create();
+        $settings = WebsiteSetting::factory()->create([
+            'openai_enabled' => false,
+            'openai_api_key' => null,
+        ]);
+
+        $this->actingAs($admin)->get(route('settings.ai-content.edit'))
+            ->assertOk()
+            ->assertSee('API key not configured');
+
+        $this->actingAs($admin)->put(route('settings.ai-content.update'), [
+            'openai_enabled' => '1',
+            'openai_api_key' => '',
+            'openai_model' => 'gpt-5.2',
+            'openai_max_output_tokens' => 2000,
+            'openai_default_language' => 'Bangla',
+            'openai_default_tone' => 'Friendly',
+        ])->assertSessionHasErrors('openai_api_key');
+
+        $this->assertFalse($settings->fresh()->openai_enabled);
     }
 
     public function test_admin_can_generate_structured_product_content(): void
