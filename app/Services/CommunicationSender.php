@@ -33,7 +33,8 @@ class CommunicationSender
     private function sendEmail(CommunicationProvider $provider, string $recipient, string $body, ?string $subject, array $attachments): string
     {
         $settings = $provider->settings;
-        config(['mail.mailers.communication' => ['transport' => 'smtp', 'host' => $settings['host'], 'port' => $settings['port'], 'encryption' => ($settings['encryption'] ?? 'none') === 'none' ? null : $settings['encryption'], 'username' => $settings['username'] ?? null, 'password' => $settings['password'] ?? null, 'timeout' => 30]]);
+        $scheme = ($settings['encryption'] ?? 'tls') === 'ssl' ? 'smtps' : 'smtp';
+        config(['mail.mailers.communication' => ['transport' => 'smtp', 'scheme' => $scheme, 'host' => $settings['host'], 'port' => $settings['port'], 'username' => $settings['username'] ?? null, 'password' => $settings['password'] ?? null, 'timeout' => 30, 'local_domain' => parse_url((string) config('app.url'), PHP_URL_HOST)]]);
         Mail::purge('communication');
         Mail::mailer('communication')->html($body, function (Message $message) use ($settings, $recipient, $subject, $attachments): void {
             $message->from($settings['from_address'], $settings['from_name'])->to($recipient)->subject($subject ?: 'Message');

@@ -48,4 +48,19 @@ class CommunicationManagementTest extends TestCase
     {
         $this->actingAs(User::factory()->customer()->create())->get(route('communication.providers.index', 'email'))->assertForbidden();
     }
+
+    public function test_new_email_provider_requires_authentication_credentials(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->post(route('communication.providers.store', 'email'), [
+                'name' => 'Incomplete SMTP',
+                'driver' => 'smtp',
+                'host' => 'smtp.gmail.com',
+                'port' => 587,
+                'encryption' => 'tls',
+                'from_address' => 'store@example.com',
+                'from_name' => 'Store',
+            ])
+            ->assertInvalid(['username', 'password']);
+    }
 }

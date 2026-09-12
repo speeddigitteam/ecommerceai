@@ -62,7 +62,9 @@ class CommunicationProviderController extends Controller
         try {
             $sender->send($communicationProvider, $validated['test_recipient'], $channel === 'email' ? '<p>This is a test email from your website.</p>' : 'This is a test SMS from your website.', 'Provider connection test');
         } catch (Throwable) {
-            return back()->with('error', 'Connection test failed. Check the provider credentials.');
+            return back()->with('error', $channel === 'email'
+                ? 'Connection test failed. Check the SMTP username, Gmail App Password, sender email, host, port and encryption.'
+                : 'Connection test failed. Check the SMS API URL, key and parameter names.');
         }
 
         return back()->with('status', 'Test message sent successfully.');
