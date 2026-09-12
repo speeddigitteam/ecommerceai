@@ -32,7 +32,7 @@ class CommunicationManagementTest extends TestCase
     {
         Http::fake(['https://sms.example.com/*' => Http::response(['success' => true])]);
         $admin = User::factory()->create();
-        $provider = CommunicationProvider::factory()->create(['channel' => 'sms', 'driver' => 'http', 'is_active' => true, 'settings' => ['url' => 'https://sms.example.com/send', 'api_key' => 'secret', 'sender_id' => 'Store', 'to_parameter' => 'to', 'message_parameter' => 'message', 'api_key_parameter' => 'api_key']]);
+        $provider = CommunicationProvider::factory()->create(['channel' => 'sms', 'driver' => 'http', 'is_active' => true, 'settings' => ['url' => 'https://sms.example.com/send', 'api_key' => 'secret', 'sender_id' => 'Store', 'to_parameter' => 'contacts', 'message_parameter' => 'msg', 'api_key_parameter' => 'api_key', 'sender_parameter' => 'senderid', 'message_type' => 'auto', 'label' => 'transactional', 'balance_url' => 'https://sms.example.com/misc/{api_key}/balance']]);
 
         $this->actingAs($admin)->post(route('communication.templates.store', 'sms'), ['name' => 'Welcome', 'body' => 'Welcome'])->assertRedirect();
         $this->actingAs($admin)->post(route('communication.notices.store'), ['name' => 'Maintenance', 'details' => 'Tonight', 'publish_to' => ['dashboard'], 'is_active' => 1])->assertRedirect();
@@ -41,7 +41,19 @@ class CommunicationManagementTest extends TestCase
         $this->assertDatabaseHas(MessageTemplate::class, ['channel' => 'sms', 'name' => 'Welcome']);
         $this->assertDatabaseHas(Notice::class, ['name' => 'Maintenance']);
         $this->assertDatabaseHas('communication_logs', ['communication_provider_id' => $provider->id, 'status' => 'sent']);
-        Http::assertSent(fn ($request): bool => $request['api_key'] === 'secret');
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://sms.example.com/send'
+            && $request['api_key'] === 'secret'
+            && $request['contacts'] === '01712345678'
+            && $request['msg'] === 'Order ready'
+            && $request['senderid'] === 'Store'
+            && $request['type'] === 'text'
+            && $request['label'] === 'transactional');
+
+        $this->actingAs($admin)
+            ->post(route('communication.providers.balance', ['sms', $provider]))
+            ->assertSessionHas('status', 'SMS balance: {"success":true}');
+
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://sms.example.com/misc/secret/balance');
     }
 
     public function test_customer_cannot_access_communication_management(): void
@@ -62,5 +74,55 @@ class CommunicationManagementTest extends TestCase
                 'from_name' => 'Store',
             ])
             ->assertInvalid(['username', 'password']);
+    }
+
+    public function test_mram_balance_url_accepts_the_encrypted_api_key_placeholder(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->post(route('communication.providers.store', 'sms'), [
+                'name' => 'MRAM SMS',
+                'driver' => 'http',
+                'url' => 'https://msg.mram.com.bd/smsapi',
+                'api_key' => 'test-secret',
+                'sender_id' => 'Store',
+                'to_parameter' => 'contacts',
+                'message_parameter' => 'msg',
+                'api_key_parameter' => 'api_key',
+                'sender_parameter' => 'senderid',
+                'message_type' => 'auto',
+                'label' => 'transactional',
+                'balance_url' => 'https://msg.mram.com.bd/miscapi/{api_key}/getBalance',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            'https://msg.mram.com.bd/miscapi/{api_key}/getBalance',
+            CommunicationProvider::query()->firstOrFail()->settings['balance_url'],
+        );
+    }
+
+    public function test_sms_connection_test_displays_the_provider_error_reason(): void
+    {
+        Http::fake(['https://msg.mram.com.bd/*' => Http::response('1002')]);
+        $admin = User::factory()->create();
+        $provider = CommunicationProvider::factory()->create([
+            'channel' => 'sms',
+            'driver' => 'http',
+            'settings' => [
+                'url' => 'https://msg.mram.com.bd/smsapi',
+                'api_key' => 'secret',
+                'sender_id' => 'Unapproved',
+                'to_parameter' => 'contacts',
+                'message_parameter' => 'msg',
+                'api_key_parameter' => 'api_key',
+                'sender_parameter' => 'senderid',
+                'message_type' => 'auto',
+                'label' => 'transactional',
+            ],
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('communication.providers.test', ['sms', $provider]), ['test_recipient' => '01712345678'])
+            ->assertSessionHas('error', 'Connection test failed: Sender ID or masking was not found.');
     }
 }

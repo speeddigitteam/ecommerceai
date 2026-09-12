@@ -31,6 +31,20 @@ class StoreCommunicationProviderRequest extends FormRequest
             'to_parameter' => ['required_if:driver,http', 'nullable', 'alpha_dash', 'max:100'],
             'message_parameter' => ['required_if:driver,http', 'nullable', 'alpha_dash', 'max:100'],
             'api_key_parameter' => ['nullable', 'alpha_dash', 'max:100'],
+            'sender_parameter' => ['nullable', 'alpha_dash', 'max:100'],
+            'message_type' => ['nullable', Rule::in(['auto', 'text', 'unicode'])],
+            'label' => ['nullable', Rule::in(['transactional', 'promotional'])],
+            'balance_url' => [
+                'nullable',
+                'string',
+                'max:1000',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $validationUrl = str_replace('{api_key}', 'api-key', (string) $value);
+                    if (! str_starts_with($validationUrl, 'https://') || filter_var($validationUrl, FILTER_VALIDATE_URL) === false) {
+                        $fail('The balance URL must be a valid HTTPS URL. You may use {api_key} as the key placeholder.');
+                    }
+                },
+            ],
         ];
     }
 }

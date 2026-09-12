@@ -99,6 +99,7 @@ Route::middleware(['admin', 'verified'])->group(function () {
         Route::put('/providers/{channel}/{communicationProvider}', [CommunicationProviderController::class, 'update'])->name('providers.update');
         Route::patch('/providers/{channel}/{communicationProvider}/status', [CommunicationProviderController::class, 'toggle'])->name('providers.toggle');
         Route::post('/providers/{channel}/{communicationProvider}/test', [CommunicationProviderController::class, 'test'])->name('providers.test');
+        Route::post('/providers/{channel}/{communicationProvider}/balance', [CommunicationProviderController::class, 'balance'])->name('providers.balance');
         Route::delete('/providers/{channel}/{communicationProvider}', [CommunicationProviderController::class, 'destroy'])->name('providers.destroy');
         Route::get('/templates/{channel}', [MessageTemplateController::class, 'index'])->name('templates.index');
         Route::post('/templates/{channel}', [MessageTemplateController::class, 'store'])->name('templates.store');

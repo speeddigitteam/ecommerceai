@@ -61,13 +61,28 @@ class CommunicationProviderController extends Controller
         $validated = $request->validate(['test_recipient' => ['required', $channel === 'email' ? 'email' : 'regex:/^(?:\+?88)?01[3-9]\d{8}$/']]);
         try {
             $sender->send($communicationProvider, $validated['test_recipient'], $channel === 'email' ? '<p>This is a test email from your website.</p>' : 'This is a test SMS from your website.', 'Provider connection test');
-        } catch (Throwable) {
-            return back()->with('error', $channel === 'email'
-                ? 'Connection test failed. Check the SMTP username, Gmail App Password, sender email, host, port and encryption.'
-                : 'Connection test failed. Check the SMS API URL, key and parameter names.');
+        } catch (Throwable $exception) {
+            $providerReason = $exception->getPrevious()?->getMessage();
+            $fallback = $channel === 'email'
+                ? 'Check the SMTP username, Gmail App Password, sender email, host, port and encryption.'
+                : 'Check the SMS API URL, key and parameter names.';
+
+            return back()->with('error', 'Connection test failed: '.str($providerReason ?: $fallback)->limit(300));
         }
 
         return back()->with('status', 'Test message sent successfully.');
+    }
+
+    public function balance(string $channel, CommunicationProvider $communicationProvider, CommunicationSender $sender): RedirectResponse
+    {
+        $this->ensureProvider($channel, $communicationProvider);
+        abort_unless($channel === 'sms', 404);
+
+        try {
+            return back()->with('status', 'SMS balance: '.$sender->balance($communicationProvider));
+        } catch (Throwable) {
+            return back()->with('error', 'Balance check failed. Check the API key and balance URL.');
+        }
     }
 
     public function destroy(string $channel, CommunicationProvider $communicationProvider): RedirectResponse
@@ -81,7 +96,7 @@ class CommunicationProviderController extends Controller
     /** @param array<string, mixed> $existing */
     private function settings(StoreCommunicationProviderRequest $request, string $channel, array $existing = []): array
     {
-        $keys = $channel === 'email' ? ['host', 'port', 'encryption', 'username', 'from_address', 'from_name'] : ['url', 'sender_id', 'to_parameter', 'message_parameter', 'api_key_parameter'];
+        $keys = $channel === 'email' ? ['host', 'port', 'encryption', 'username', 'from_address', 'from_name'] : ['url', 'sender_id', 'to_parameter', 'message_parameter', 'api_key_parameter', 'sender_parameter', 'message_type', 'label', 'balance_url'];
         $settings = collect($request->validated())->only($keys)->all();
         $secret = $channel === 'email' ? 'password' : 'api_key';
         $settings[$secret] = $request->filled($secret) ? $request->string($secret)->toString() : ($existing[$secret] ?? null);
