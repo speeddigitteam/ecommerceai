@@ -31,7 +31,11 @@ class ProductManagementTest extends TestCase
         WebsiteSetting::factory()->create(['site_name' => 'Acme Store']);
         Product::factory()->create(['title' => 'Premium Water Purifier']);
 
-        $this->actingAs($user)->get(route('products.index'))->assertOk()->assertSee('Premium Water Purifier');
+        $this->actingAs($user)->get(route('products.index'))
+            ->assertOk()
+            ->assertSee('Premium Water Purifier')
+            ->assertSee('x-teleport="body"', false)
+            ->assertSee('Duplicate');
         $this->actingAs($user)->get(route('products.create'))
             ->assertOk()
             ->assertSee('Add new product')
