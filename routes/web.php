@@ -14,6 +14,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\CommunicationProviderController;
 use App\Http\Controllers\CourierIntegrationController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerDashboardController;
@@ -27,9 +28,12 @@ use App\Http\Controllers\FlashSaleSettingController;
 use App\Http\Controllers\HeroSettingController;
 use App\Http\Controllers\IncomeCategoryController;
 use App\Http\Controllers\IncomeController;
+use App\Http\Controllers\ManualMessageController;
 use App\Http\Controllers\MediaAssetController;
+use App\Http\Controllers\MessageTemplateController;
 use App\Http\Controllers\NewsletterController;
 use App\Http\Controllers\NewsletterSubscriptionController;
+use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductReviewController;
@@ -89,6 +93,24 @@ Route::get('/dashboard', function () {
 })->middleware(['admin', 'verified'])->name('dashboard');
 
 Route::middleware(['admin', 'verified'])->group(function () {
+    Route::prefix('communication')->name('communication.')->group(function () {
+        Route::get('/providers/{channel}', [CommunicationProviderController::class, 'index'])->name('providers.index');
+        Route::post('/providers/{channel}', [CommunicationProviderController::class, 'store'])->name('providers.store');
+        Route::put('/providers/{channel}/{communicationProvider}', [CommunicationProviderController::class, 'update'])->name('providers.update');
+        Route::patch('/providers/{channel}/{communicationProvider}/status', [CommunicationProviderController::class, 'toggle'])->name('providers.toggle');
+        Route::post('/providers/{channel}/{communicationProvider}/test', [CommunicationProviderController::class, 'test'])->name('providers.test');
+        Route::delete('/providers/{channel}/{communicationProvider}', [CommunicationProviderController::class, 'destroy'])->name('providers.destroy');
+        Route::get('/templates/{channel}', [MessageTemplateController::class, 'index'])->name('templates.index');
+        Route::post('/templates/{channel}', [MessageTemplateController::class, 'store'])->name('templates.store');
+        Route::put('/templates/{channel}/{messageTemplate}', [MessageTemplateController::class, 'update'])->name('templates.update');
+        Route::delete('/templates/{channel}/{messageTemplate}', [MessageTemplateController::class, 'destroy'])->name('templates.destroy');
+        Route::get('/manual/{channel}', [ManualMessageController::class, 'create'])->name('manual.create');
+        Route::post('/manual/{channel}', [ManualMessageController::class, 'send'])->name('manual.send');
+        Route::get('/notices', [NoticeController::class, 'index'])->name('notices.index');
+        Route::post('/notices', [NoticeController::class, 'store'])->name('notices.store');
+        Route::put('/notices/{notice}', [NoticeController::class, 'update'])->name('notices.update');
+        Route::delete('/notices/{notice}', [NoticeController::class, 'destroy'])->name('notices.destroy');
+    });
     Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics.index');
 
     Route::controller(BlogController::class)->prefix('blog')->name('blog.')->group(function () {
