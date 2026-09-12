@@ -70,7 +70,15 @@ class CategoryController extends Controller
     private function data(Request $request, ?Category $category = null): array
     {
         $id = $category?->id;
-        $data = $request->validate(['name' => ['required', 'string', 'max:100', 'unique:categories,name'.($id ? ','.$id : '')], 'slug' => ['nullable', 'string', 'max:100', 'alpha_dash', 'unique:categories,slug'.($id ? ','.$id : '')], 'parent_id' => ['nullable', 'integer', 'different:'.$id, 'exists:categories,id'], 'description' => ['nullable', 'string'], 'display_type' => ['nullable', 'in:default'], 'thumbnail' => ['nullable', 'image', 'max:2048'], 'page_title_image' => ['nullable', 'image', 'max:2048'], 'navigation_image' => ['nullable', 'image', 'max:2048'], 'header_menu_image' => ['nullable', 'image', 'max:2048'], 'extra_description' => ['nullable', 'string'], 'slider_image' => ['nullable', 'image', 'max:2048']]);
+        $data = $request->validate(
+            ['name' => ['required', 'string', 'max:100', 'unique:categories,name'.($id ? ','.$id : '')], 'slug' => ['nullable', 'string', 'max:100', 'alpha_dash', 'unique:categories,slug'.($id ? ','.$id : '')], 'parent_id' => ['nullable', 'integer', 'different:'.$id, 'exists:categories,id'], 'description' => ['nullable', 'string'], 'display_type' => ['nullable', 'in:default'], 'thumbnail' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'], 'page_title_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'], 'navigation_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'], 'header_menu_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'], 'extra_description' => ['nullable', 'string'], 'slider_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']],
+            [
+                '*.image' => 'The selected file must be a valid image.',
+                '*.mimes' => 'The image must be a JPG, PNG or WebP file.',
+                '*.max' => 'The image could not be uploaded because it is larger than 2 MB.',
+                'navigation_image.uploaded' => 'The category image upload did not complete. Check the server upload limit and try again.',
+            ],
+        );
         $data['slug'] = $data['slug'] ?? Str::slug($data['name']);
 
         $parentId = $data['parent_id'] ?? null;

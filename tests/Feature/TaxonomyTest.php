@@ -64,6 +64,7 @@ class TaxonomyTest extends TestCase
 
     public function test_an_authenticated_user_can_view_update_and_delete_a_category(): void
     {
+        Storage::fake('public');
         $user = User::factory()->create();
         $category = Category::factory()->create(['name' => 'Electronics', 'slug' => 'electronics']);
 
@@ -74,12 +75,33 @@ class TaxonomyTest extends TestCase
             'name' => 'Updated Electronics',
             'slug' => 'updated-electronics',
             'display_type' => 'default',
+            'navigation_image' => UploadedFile::fake()->image('updated-electronics.png'),
         ])->assertRedirect(route('categories.index'));
         $this->assertDatabaseHas('categories', ['name' => 'Updated Electronics']);
         $category->refresh();
+        Storage::disk('public')->assertExists($category->navigation_image_path);
         $this->actingAs($user)->delete(route('categories.destroy', $category))
             ->assertRedirect(route('categories.index'));
         $this->assertDatabaseMissing('categories', ['id' => $category->id]);
+    }
+
+    public function test_category_image_validation_explains_why_upload_failed(): void
+    {
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+
+        $this->actingAs($user)
+            ->from(route('categories.edit', $category))
+            ->put(route('categories.update', $category), [
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'display_type' => 'default',
+                'navigation_image' => UploadedFile::fake()->image('large-category.png')->size(2500),
+            ])
+            ->assertRedirect(route('categories.edit', $category))
+            ->assertSessionHasErrors([
+                'navigation_image' => 'The image could not be uploaded because it is larger than 2 MB.',
+            ]);
     }
 
     public function test_category_edit_form_excludes_itself_and_descendants_from_parent_options(): void

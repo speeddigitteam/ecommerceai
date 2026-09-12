@@ -5,6 +5,12 @@
             <x-admin-topbar />
             <main class="mx-auto max-w-3xl p-5 sm:p-10">
                 <a href="{{ route('categories.index') }}" class="text-sm font-semibold text-indigo-600 dark:text-indigo-400">&larr; Back to categories</a>
+                @if ($errors->any())
+                    <div role="alert" class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+                        <p class="font-semibold">Category could not be updated.</p>
+                        <ul class="mt-2 list-disc space-y-1 pl-5">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+                    </div>
+                @endif
                 <section class="ds-card ds-card-body mt-5">
                     <h1 class="text-2xl font-bold">Edit category</h1>
                     <form data-ds-editable data-ds-editable-start="edit" id="category-edit-form" method="POST" action="{{ route('categories.update', $category) }}" enctype="multipart/form-data" class="mt-7 space-y-5">
