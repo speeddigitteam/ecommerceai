@@ -8,7 +8,7 @@
         <main class="min-w-0 lg:pl-72">
             <x-admin-topbar />
 
-            <div class="mx-auto max-w-7xl p-5 sm:p-8">
+            <div class="w-full p-5 sm:p-6 lg:p-7">
                 <div class="mb-6">
                     <p class="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Settings / Communication</p>
                     <h1 class="mt-1 text-2xl font-bold">{{ ucfirst($channel) }} Providers</h1>
@@ -25,7 +25,7 @@
                     <div class="mb-5 rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">{{ $errors->first() }}</div>
                 @endif
 
-                <div class="grid items-start gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+                <div class="grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
                     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#161f2e] xl:sticky xl:top-24">
                         <div class="border-b border-slate-200 bg-indigo-50/60 px-5 py-4 dark:border-slate-800 dark:bg-indigo-500/10">
                             <p class="text-xs font-bold uppercase tracking-[.14em] text-indigo-600 dark:text-indigo-400" x-text="editing ? 'Update outbound route' : 'New outbound route'"></p>
@@ -93,7 +93,7 @@
                         </div>
 
                         <div class="overflow-x-auto">
-                            <table class="w-full min-w-[760px] text-left text-sm">
+                            <table class="w-full min-w-[720px] text-left text-sm">
                                 <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 dark:bg-slate-800/60"><tr><th class="px-5 py-4">Provider</th><th class="px-5 py-4">Connection</th><th class="px-5 py-4">Status</th><th class="px-5 py-4">Test connection</th><th class="px-5 py-4 text-right">Actions</th></tr></thead>
                                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                                     @forelse ($providers as $provider)
