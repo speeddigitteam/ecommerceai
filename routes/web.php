@@ -219,6 +219,7 @@ Route::middleware(['admin', 'verified'])->group(function () {
     Route::put('/accounting/expense-categories/{expenseCategory}', [ExpenseCategoryController::class, 'update'])->name('expense-categories.update');
     Route::delete('/accounting/expense-categories/{expenseCategory}', [ExpenseCategoryController::class, 'destroy'])->name('expense-categories.destroy');
 
+    Route::post('/products/{product}/duplicate', [ProductController::class, 'duplicate'])->name('products.duplicate');
     Route::resource('products', ProductController::class)->except('show');
     Route::get('/products/{product}/preview', [ProductController::class, 'show'])->name('products.show');
 });

@@ -12,6 +12,7 @@ use App\Models\Unit;
 use App\Services\MediaLibrary;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -62,13 +63,54 @@ class ProductController extends Controller
         return to_route('products.index')->with('status', 'Product updated successfully.');
     }
 
+    public function duplicate(Product $product): RedirectResponse
+    {
+        $duplicate = DB::transaction(function () use ($product): Product {
+            $product->load(['categories', 'variants', 'wholesalePriceTiers']);
+
+            $duplicate = $product->replicate();
+            $duplicate->title = Str::limit($product->title.' - Copy', 255, '');
+            $duplicate->slug = $this->uniqueCopySlug($product->slug);
+            $duplicate->sku = $this->uniqueCopySku($product->sku, 'products');
+            $duplicate->status = 'draft';
+            $duplicate->published_at = null;
+            $duplicate->save();
+            $duplicate->categories()->sync($product->categories->modelKeys());
+
+            $variantIds = [];
+            foreach ($product->variants as $variant) {
+                $variantCopy = $variant->replicate();
+                $variantCopy->product_id = $duplicate->id;
+                $variantCopy->sku = $this->uniqueCopySku($variant->sku, 'product_variants');
+                $variantCopy->save();
+                $variantIds[$variant->id] = $variantCopy->id;
+            }
+
+            foreach ($product->wholesalePriceTiers as $tier) {
+                $tierCopy = $tier->replicate();
+                $tierCopy->product_id = $duplicate->id;
+                $tierCopy->product_variant_id = $tier->product_variant_id
+                    ? ($variantIds[$tier->product_variant_id] ?? null)
+                    : null;
+                $tierCopy->save();
+            }
+
+            return $duplicate;
+        });
+
+        return to_route('products.edit', $duplicate)
+            ->with('status', 'Product duplicated as a draft. Review it before publishing.');
+    }
+
     public function destroy(Product $product): RedirectResponse
     {
-        $this->mediaLibrary->delete([$product->featured_image_path, ...($product->gallery_paths ?? []), ...$product->variants()->pluck('image_path')->filter()->all()]);
-        if ($product->video_path) {
+        $mediaPaths = collect([$product->featured_image_path, ...($product->gallery_paths ?? []), ...$product->variants()->pluck('image_path')->filter()->all()])
+            ->filter(fn (?string $path): bool => filled($path) && ! $this->pathIsUsedByAnotherProduct($path, $product));
+        $this->mediaLibrary->delete($mediaPaths->all());
+        if ($product->video_path && ! $this->pathIsUsedByAnotherProduct($product->video_path, $product)) {
             Storage::disk('public')->delete($product->video_path);
         }
-        if ($product->digital_file_path) {
+        if ($product->digital_file_path && ! $this->pathIsUsedByAnotherProduct($product->digital_file_path, $product)) {
             Storage::disk('local')->delete($product->digital_file_path);
         }
         $product->delete();
@@ -140,12 +182,14 @@ class ProductController extends Controller
 
             $imageInput = "variants.{$index}.image";
             if ($request->hasFile($imageInput)) {
-                if ($variant?->image_path) {
+                if ($variant?->image_path && ! $this->pathIsUsedByAnotherProduct($variant->image_path, $product)) {
                     $this->mediaLibrary->delete($variant->image_path);
                 }
                 $attributes['image_path'] = $this->mediaLibrary->storeImage($request->file($imageInput), 'products/variants', $product->title);
             } elseif (($variantData['remove_image'] ?? false) && $variant?->image_path) {
-                $this->mediaLibrary->delete($variant->image_path);
+                if (! $this->pathIsUsedByAnotherProduct($variant->image_path, $product)) {
+                    $this->mediaLibrary->delete($variant->image_path);
+                }
                 $attributes['image_path'] = null;
             }
 
@@ -155,7 +199,9 @@ class ProductController extends Controller
 
         $removedVariants = $existingVariants->except($keptIds);
         if ($removedVariants->isNotEmpty()) {
-            $this->mediaLibrary->delete($removedVariants->pluck('image_path')->filter()->all());
+            $this->mediaLibrary->delete($removedVariants->pluck('image_path')->filter(
+                fn (?string $path): bool => filled($path) && ! $this->pathIsUsedByAnotherProduct($path, $product)
+            )->all());
             ProductVariant::query()->whereIn('id', $removedVariants->keys())->delete();
         }
 
@@ -169,7 +215,9 @@ class ProductController extends Controller
         foreach (['featured_image' => 'featured_image_path', 'video' => 'video_path'] as $input => $attribute) {
             if ($request->hasFile($input)) {
                 if ($product->{$attribute}) {
-                    $input === 'video' ? Storage::disk('public')->delete($product->{$attribute}) : $this->mediaLibrary->delete($product->{$attribute});
+                    if (! $this->pathIsUsedByAnotherProduct($product->{$attribute}, $product)) {
+                        $input === 'video' ? Storage::disk('public')->delete($product->{$attribute}) : $this->mediaLibrary->delete($product->{$attribute});
+                    }
                 }
 
                 $product->{$attribute} = $input === 'video' ? $request->file($input)->store('products', 'public') : $this->mediaLibrary->storeImage($request->file($input), 'products', $product->title);
@@ -181,14 +229,16 @@ class ProductController extends Controller
         }
 
         if ($request->hasFile('digital_file')) {
-            if ($product->digital_file_path) {
+            if ($product->digital_file_path && ! $this->pathIsUsedByAnotherProduct($product->digital_file_path, $product)) {
                 Storage::disk('local')->delete($product->digital_file_path);
             }
             $file = $request->file('digital_file');
             $product->digital_file_path = $file->store('digital-products', 'local');
             $product->digital_file_name = $file->getClientOriginalName();
         } elseif ($request->boolean('remove_digital_file') && $product->digital_file_path) {
-            Storage::disk('local')->delete($product->digital_file_path);
+            if (! $this->pathIsUsedByAnotherProduct($product->digital_file_path, $product)) {
+                Storage::disk('local')->delete($product->digital_file_path);
+            }
             $product->digital_file_path = null;
             $product->digital_file_name = null;
         }
@@ -200,5 +250,55 @@ class ProductController extends Controller
     private function options(): array
     {
         return ['categories' => Category::query()->whereNull('parent_id')->with('childrenRecursive')->orderBy('name')->get(), 'brands' => Brand::query()->orderBy('name')->get(), 'units' => Unit::query()->orderBy('name')->get()];
+    }
+
+    private function uniqueCopySlug(string $slug): string
+    {
+        $base = Str::limit(Str::slug($slug.'-copy'), 245, '');
+        $candidate = $base;
+        $suffix = 2;
+
+        while (Product::query()->where('slug', $candidate)->exists()) {
+            $candidate = Str::limit($base, 244 - strlen((string) $suffix), '').'-'.$suffix;
+            $suffix++;
+        }
+
+        return $candidate;
+    }
+
+    private function uniqueCopySku(?string $sku, string $table): ?string
+    {
+        if (blank($sku)) {
+            return null;
+        }
+
+        $base = Str::limit($sku.'-COPY', 90, '');
+        $candidate = $base;
+        $suffix = 2;
+
+        while (DB::table($table)->where('sku', $candidate)->exists()) {
+            $candidate = Str::limit($base, 98 - strlen((string) $suffix), '').'-'.$suffix;
+            $suffix++;
+        }
+
+        return $candidate;
+    }
+
+    private function pathIsUsedByAnotherProduct(string $path, Product $product): bool
+    {
+        $usedByProduct = Product::query()
+            ->whereKeyNot($product->id)
+            ->get(['featured_image_path', 'gallery_paths', 'video_path', 'digital_file_path'])
+            ->contains(fn (Product $otherProduct): bool => in_array($path, [
+                $otherProduct->featured_image_path,
+                ...($otherProduct->gallery_paths ?? []),
+                $otherProduct->video_path,
+                $otherProduct->digital_file_path,
+            ], true));
+
+        return $usedByProduct || ProductVariant::query()
+            ->where('product_id', '!=', $product->id)
+            ->where('image_path', $path)
+            ->exists();
     }
 }

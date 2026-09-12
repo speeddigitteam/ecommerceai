@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\WebsiteSetting;
+use App\Models\WholesalePriceTier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
@@ -235,6 +236,60 @@ class ProductManagementTest extends TestCase
         $this->actingAs($user)->get(route('products.show', $product))->assertOk()->assertSee('Updated Product');
         $this->actingAs($user)->delete(route('products.destroy', $product))->assertRedirect(route('products.index'));
         $this->assertDatabaseMissing('products', ['id' => $product->id]);
+    }
+
+    public function test_user_can_duplicate_a_complete_product_as_a_draft(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('products/purifier.webp', 'image');
+        Storage::disk('public')->put('products/gallery/purifier.webp', 'image');
+        Storage::disk('public')->put('products/variants/red.webp', 'image');
+        $user = User::factory()->create();
+        $category = Category::factory()->create();
+        $product = Product::factory()->create([
+            'title' => 'Premium Water Purifier',
+            'slug' => 'premium-water-purifier',
+            'sku' => 'WP-100',
+            'status' => 'published',
+            'published_at' => now(),
+            'featured_image_path' => 'products/purifier.webp',
+            'gallery_paths' => ['products/gallery/purifier.webp'],
+            'delivery_charge_type' => 'custom',
+            'delivery_charges' => ['dhaka_city' => 50, 'dhaka_outside' => 80, 'outside_dhaka' => 100],
+        ]);
+        $product->categories()->attach($category);
+        $variant = ProductVariant::factory()->for($product)->create([
+            'sku' => 'WP-100-RED',
+            'image_path' => 'products/variants/red.webp',
+            'options' => ['Color' => 'Red'],
+        ]);
+        WholesalePriceTier::query()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'minimum_quantity' => 5,
+            'unit_price' => 900,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('products.duplicate', $product));
+
+        $duplicate = Product::query()->whereKeyNot($product->id)->sole();
+        $response->assertRedirect(route('products.edit', $duplicate));
+        $this->assertSame('Premium Water Purifier - Copy', $duplicate->title);
+        $this->assertSame('premium-water-purifier-copy', $duplicate->slug);
+        $this->assertSame('WP-100-COPY', $duplicate->sku);
+        $this->assertSame('draft', $duplicate->status);
+        $this->assertNull($duplicate->published_at);
+        $this->assertSame($product->featured_image_path, $duplicate->featured_image_path);
+        $this->assertSame($product->delivery_charges, $duplicate->delivery_charges);
+        $this->assertTrue($duplicate->categories->contains($category));
+        $this->assertSame('WP-100-RED-COPY', $duplicate->variants->sole()->sku);
+        $this->assertSame($duplicate->variants->sole()->id, $duplicate->wholesalePriceTiers->sole()->product_variant_id);
+        $this->assertSame('published', $product->fresh()->status);
+
+        $this->actingAs($user)->delete(route('products.destroy', $product));
+        Storage::disk('public')->assertExists('products/purifier.webp');
+        Storage::disk('public')->assertExists('products/gallery/purifier.webp');
+        Storage::disk('public')->assertExists('products/variants/red.webp');
     }
 
     public function test_user_can_edit_dynamic_product_specifications(): void
