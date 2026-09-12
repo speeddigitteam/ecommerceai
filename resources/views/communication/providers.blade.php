@@ -1,6 +1,3 @@
-<div>
-    <!-- Simplicity is the essence of happiness. - Cedric Bledsoe -->
-</div>
 <x-admin-layout :title="ucfirst($channel).' Providers'">
 <div x-data="{ modal: @js($errors->any()), edit: null, remove: null }" class="min-h-screen bg-slate-50 dark:bg-[#111827] dark:text-slate-100">
 <x-admin-sidebar/><main class="min-w-0 lg:pl-72"><x-admin-topbar/>
@@ -12,7 +9,8 @@
 <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#161f2e]"><div class="border-b border-slate-200 p-5 dark:border-slate-800"><h2 class="font-bold">Connected providers</h2><p class="mt-1 text-xs text-slate-500">{{ $providers->total() }} provider(s)</p></div>
 <div class="overflow-x-auto"><table class="w-full min-w-[820px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/60"><tr><th class="px-6 py-4">Provider</th><th class="px-6 py-4">Configuration</th><th class="px-6 py-4">Status</th><th class="px-6 py-4 text-right">Actions</th></tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">
 @forelse($providers as $provider)<tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/30"><td class="px-6 py-4"><p class="font-semibold">{{ $provider->name }}</p><p class="text-xs uppercase text-slate-500">{{ $provider->driver }}</p></td><td class="px-6 py-4 text-slate-500">{{ $channel==='email' ? ($provider->settings['host'] ?? 'Not configured') : ($provider->settings['url'] ?? 'Not configured') }}<p class="mt-1 text-xs">Secret: ••••••••</p></td><td class="px-6 py-4"><span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $provider->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ $provider->is_active ? 'Active' : 'Inactive' }}</span></td><td class="px-6 py-4"><div class="flex justify-end gap-2">
-<button @click='edit=@json(["id"=>$provider->id,"name"=>$provider->name,"settings"=>collect($provider->settings)->except(["password","api_key"])]); modal=true' class="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">Edit</button>
+@php($editableProvider = ['id' => $provider->id, 'name' => $provider->name, 'settings' => collect($provider->settings)->except(['password', 'api_key'])->all()])
+<button @click="edit = {{ Illuminate\Support\Js::from($editableProvider) }}; modal = true" class="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">Edit</button>
 <form method="POST" action="{{ route('communication.providers.toggle', [$channel,$provider]) }}">@csrf @method('PATCH')<button class="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold">{{ $provider->is_active?'Disable':'Enable' }}</button></form>
 <form method="POST" action="{{ route('communication.providers.test', [$channel,$provider]) }}" class="flex gap-1">@csrf<input required name="test_recipient" placeholder="{{ $channel==='email'?'name@example.com':'01XXXXXXXXX' }}" class="w-40 rounded-lg border-slate-300 px-2 py-1 text-xs dark:bg-slate-800"><button class="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Test</button></form>
 <button @click="remove={{ $provider->id }}" class="rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">Delete</button></div></td></tr>
