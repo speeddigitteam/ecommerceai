@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Jobs\SendAutomatedEmail;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -47,6 +48,7 @@ class Order extends Model
                 'to_status' => $order->status,
                 'note' => 'Order created.',
             ]);
+            SendAutomatedEmail::dispatch('order-confirmation', $order->id)->afterCommit();
         });
         static::saved(function (): void {
             Cache::forget('admin.order.notifications');

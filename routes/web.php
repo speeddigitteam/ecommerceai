@@ -104,6 +104,7 @@ Route::middleware(['admin', 'verified'])->group(function () {
         Route::get('/templates/{channel}', [MessageTemplateController::class, 'index'])->name('templates.index');
         Route::post('/templates/{channel}', [MessageTemplateController::class, 'store'])->name('templates.store');
         Route::put('/templates/{channel}/{messageTemplate}', [MessageTemplateController::class, 'update'])->name('templates.update');
+        Route::patch('/templates/{channel}/{messageTemplate}/status', [MessageTemplateController::class, 'toggle'])->name('templates.toggle');
         Route::delete('/templates/{channel}/{messageTemplate}', [MessageTemplateController::class, 'destroy'])->name('templates.destroy');
         Route::get('/manual/{channel}', [ManualMessageController::class, 'create'])->name('manual.create');
         Route::post('/manual/{channel}', [ManualMessageController::class, 'send'])->name('manual.send');

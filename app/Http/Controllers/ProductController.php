@@ -121,7 +121,7 @@ class ProductController extends Controller
     /** @return array<string, mixed> */
     private function data(StoreProductRequest $request, ?Product $product = null): array
     {
-        $data = $request->safe()->except(['featured_image', 'gallery', 'video', 'category_ids', 'variants', 'wholesale_tiers', 'digital_file', 'remove_digital_file']);
+        $data = $request->safe()->except(['featured_image', 'remove_featured_image', 'gallery', 'remove_gallery_paths', 'video', 'category_ids', 'variants', 'wholesale_tiers', 'digital_file', 'remove_digital_file']);
         $data['slug'] = ($data['slug'] ?? null) ?: Str::slug($data['title']);
         $data['tags'] = array_values(array_filter(array_map('trim', explode(',', $data['tags'] ?? ''))));
         $data['specifications'] = collect($data['specifications'] ?? [])->map(fn (array $section): array => [
@@ -221,7 +221,26 @@ class ProductController extends Controller
                 }
 
                 $product->{$attribute} = $input === 'video' ? $request->file($input)->store('products', 'public') : $this->mediaLibrary->storeImage($request->file($input), 'products', $product->title);
+            } elseif ($input === 'featured_image' && $request->boolean('remove_featured_image') && $product->featured_image_path) {
+                if (! $this->pathIsUsedByAnotherProduct($product->featured_image_path, $product)) {
+                    $this->mediaLibrary->delete($product->featured_image_path);
+                }
+
+                $product->featured_image_path = null;
             }
+        }
+
+        $galleryPathsToRemove = collect($request->validated('remove_gallery_paths', []))
+            ->intersect($product->gallery_paths ?? [])
+            ->values();
+        if ($galleryPathsToRemove->isNotEmpty()) {
+            $this->mediaLibrary->delete($galleryPathsToRemove->filter(
+                fn (string $path): bool => ! $this->pathIsUsedByAnotherProduct($path, $product)
+            )->all());
+            $product->gallery_paths = collect($product->gallery_paths ?? [])
+                ->reject(fn (string $path): bool => $galleryPathsToRemove->contains($path))
+                ->values()
+                ->all();
         }
 
         if ($request->hasFile('gallery')) {

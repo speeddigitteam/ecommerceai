@@ -320,6 +320,10 @@
                                     <div class="flex flex-1 flex-col p-4">
                                         @if($product->featured_image_path)
                                             <img src="{{ asset('storage/'.$product->featured_image_path) }}" class="aspect-[4/3] w-full rounded-xl border border-slate-200 object-cover dark:border-slate-700" alt="{{ $product->title }} featured image">
+                                            <label class="mt-3 inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                                                <input name="remove_featured_image" type="checkbox" value="1" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                                                Remove featured image
+                                            </label>
                                         @else
                                             <div class="grid aspect-[4/3] w-full place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-white text-center dark:border-slate-700 dark:bg-slate-900">
                                                 <div class="px-4"><svg class="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10.5M8 10l2.5 2.5L14 9l6 6M3 20h18"/></svg><p class="mt-2 text-xs text-slate-400">No featured image yet</p></div>
@@ -360,7 +364,13 @@
                                     <div class="flex flex-1 flex-col p-4">
                                         @if($product->gallery_paths)
                                             <div class="grid aspect-[4/3] grid-cols-3 content-start gap-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-900">
-                                                @foreach($product->gallery_paths as $image)<img src="{{ asset('storage/'.$image) }}" class="aspect-square w-full rounded-lg object-cover" alt="{{ $product->title }} gallery image">@endforeach
+                                                @foreach($product->gallery_paths as $image)
+                                                    <label class="group relative cursor-pointer">
+                                                        <img src="{{ asset('storage/'.$image) }}" class="aspect-square w-full rounded-lg object-cover transition group-hover:brightness-75" alt="{{ $product->title }} gallery image">
+                                                        <input name="remove_gallery_paths[]" type="checkbox" value="{{ $image }}" class="peer absolute right-1.5 top-1.5 rounded border-white bg-white/90 text-rose-600 shadow focus:ring-rose-500">
+                                                        <span class="pointer-events-none absolute inset-x-1.5 bottom-1.5 rounded-md bg-rose-600 px-1.5 py-1 text-center text-[10px] font-bold text-white opacity-0 transition group-hover:opacity-100 peer-checked:opacity-100">Remove</span>
+                                                    </label>
+                                                @endforeach
                                             </div>
                                         @else
                                             <div class="grid aspect-[4/3] w-full place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-white text-center dark:border-slate-700 dark:bg-slate-900">

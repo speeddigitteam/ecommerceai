@@ -296,6 +296,40 @@ class ProductManagementTest extends TestCase
         Storage::disk('public')->assertExists('products/variants/red.webp');
     }
 
+    public function test_user_can_remove_shared_images_from_a_duplicated_product_without_deleting_original_media(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('products/shared.webp', 'image');
+        Storage::disk('public')->put('products/gallery/shared.webp', 'image');
+        $user = User::factory()->create();
+        $original = Product::factory()->create([
+            'featured_image_path' => 'products/shared.webp',
+            'gallery_paths' => ['products/gallery/shared.webp'],
+        ]);
+
+        $this->actingAs($user)->post(route('products.duplicate', $original));
+        $duplicate = Product::query()->whereKeyNot($original->id)->sole();
+
+        $this->actingAs($user)->put(route('products.update', $duplicate), [
+            'title' => $duplicate->title,
+            'slug' => $duplicate->slug,
+            'type' => 'physical',
+            'stock_quantity' => $duplicate->stock_quantity,
+            'status' => 'draft',
+            'visibility' => $duplicate->visibility,
+            'remove_featured_image' => '1',
+            'remove_gallery_paths' => ['products/gallery/shared.webp'],
+        ])->assertRedirect(route('products.index'));
+
+        $duplicate->refresh();
+        $this->assertNull($duplicate->featured_image_path);
+        $this->assertSame([], $duplicate->gallery_paths);
+        $this->assertSame('products/shared.webp', $original->fresh()->featured_image_path);
+        $this->assertSame(['products/gallery/shared.webp'], $original->fresh()->gallery_paths);
+        Storage::disk('public')->assertExists('products/shared.webp');
+        Storage::disk('public')->assertExists('products/gallery/shared.webp');
+    }
+
     public function test_user_can_edit_dynamic_product_specifications(): void
     {
         $user = User::factory()->create();

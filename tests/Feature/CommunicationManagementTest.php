@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendAutomatedEmail;
 use App\Models\CommunicationProvider;
 use App\Models\MessageTemplate;
 use App\Models\Notice;
+use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class CommunicationManagementTest extends TestCase
@@ -124,5 +127,54 @@ class CommunicationManagementTest extends TestCase
         $this->actingAs($admin)
             ->post(route('communication.providers.test', ['sms', $provider]), ['test_recipient' => '01712345678'])
             ->assertSessionHas('error', 'Connection test failed: Sender ID or masking was not found.');
+    }
+
+    public function test_requested_email_template_library_is_seeded_and_filterable(): void
+    {
+        $this->assertSame(25, MessageTemplate::query()->where('channel', 'email')->count());
+        $this->assertSame(12, MessageTemplate::query()->where('channel', 'email')->where('category', 'transactional')->count());
+        $this->assertSame(7, MessageTemplate::query()->where('channel', 'email')->where('category', 'marketing')->count());
+        $this->assertSame(6, MessageTemplate::query()->where('channel', 'email')->where('category', 'automation')->count());
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('communication.templates.index', ['email', 'category' => 'automation']))
+            ->assertOk()
+            ->assertSee('Abandoned Cart')
+            ->assertDontSee('Order Confirmation');
+    }
+
+    public function test_order_creation_queues_the_enabled_transactional_email_workflow(): void
+    {
+        Queue::fake();
+        $order = Order::factory()->create([
+            'order_number' => 'ORD00001',
+            'order_type' => 'cart',
+            'customer_name' => 'Customer',
+            'customer_phone' => '01712345678',
+            'customer_email' => 'customer@example.com',
+            'shipping_address' => 'Dhaka',
+            'subtotal' => 500,
+            'shipping_cost' => 50,
+            'total' => 550,
+            'payment_method' => 'cash_on_delivery',
+            'status' => 'pending',
+        ]);
+
+        Queue::assertPushed(SendAutomatedEmail::class, fn (SendAutomatedEmail $job): bool => $job->templateKey === 'order-confirmation' && $job->orderId === $order->id);
+    }
+
+    public function test_requested_sms_template_library_is_seeded_but_disabled_by_default(): void
+    {
+        $this->assertSame(25, MessageTemplate::query()->where('channel', 'sms')->count());
+        $this->assertSame(12, MessageTemplate::query()->where('channel', 'sms')->where('category', 'transactional')->count());
+        $this->assertSame(7, MessageTemplate::query()->where('channel', 'sms')->where('category', 'marketing')->count());
+        $this->assertSame(6, MessageTemplate::query()->where('channel', 'sms')->where('category', 'automation')->count());
+        $this->assertFalse(MessageTemplate::query()->where('channel', 'sms')->where('is_active', true)->exists());
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('communication.templates.index', ['sms', 'category' => 'transactional']))
+            ->assertOk()
+            ->assertSee('Order Confirmation')
+            ->assertSee('Disabled');
     }
 }

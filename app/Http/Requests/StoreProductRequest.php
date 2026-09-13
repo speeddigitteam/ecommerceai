@@ -73,8 +73,11 @@ class StoreProductRequest extends FormRequest
             'seo_title' => ['nullable', 'string', 'max:60'],
             'meta_description' => ['nullable', 'string', 'max:160'],
             'featured_image' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:4096'],
+            'remove_featured_image' => ['nullable', 'boolean'],
             'gallery' => ['nullable', 'array', 'max:12'],
             'gallery.*' => ['image', 'mimes:png,jpg,jpeg,webp', 'max:4096'],
+            'remove_gallery_paths' => ['nullable', 'array'],
+            'remove_gallery_paths.*' => ['string', 'max:1000'],
             'video' => ['nullable', 'file', 'mimes:mp4,webm,mov', 'max:20480'],
         ];
 

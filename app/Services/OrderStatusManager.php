@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SendAutomatedEmail;
 use App\Models\Order;
 use App\Models\User;
 use App\OrderStatus;
@@ -17,7 +18,7 @@ class OrderStatusManager
         ?string $note = null,
         bool $courierConfirmedCancellation = false,
     ): Order {
-        return DB::transaction(function () use ($order, $target, $user, $note, $courierConfirmedCancellation): Order {
+        $updatedOrder = DB::transaction(function () use ($order, $target, $user, $note, $courierConfirmedCancellation): Order {
             $lockedOrder = Order::query()->with('items.product')->lockForUpdate()->findOrFail($order->id);
             $current = OrderStatus::from($lockedOrder->status);
 
@@ -46,6 +47,17 @@ class OrderStatusManager
 
             return $lockedOrder->fresh(['items', 'shipment', 'statusHistories.user']);
         });
+
+        $templateKey = match ($target) {
+            OrderStatus::Shipped => 'shipping',
+            OrderStatus::Completed => 'delivery',
+            OrderStatus::Cancelled => 'cancellation',
+            OrderStatus::Returned => 'return',
+            default => 'order-status',
+        };
+        SendAutomatedEmail::dispatch($templateKey, $updatedOrder->id)->afterCommit();
+
+        return $updatedOrder;
     }
 
     private function restoreStock(Order $order): void

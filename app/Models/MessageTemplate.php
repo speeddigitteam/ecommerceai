@@ -12,11 +12,11 @@ class MessageTemplate extends Model
     use HasFactory;
 
     /** @var list<string> */
-    protected $fillable = ['channel', 'name', 'subject', 'body', 'is_important'];
+    protected $fillable = ['channel', 'key', 'category', 'trigger', 'name', 'subject', 'preview_text', 'body', 'button_text', 'button_url', 'is_important', 'is_active'];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['is_important' => 'boolean'];
+        return ['is_important' => 'boolean', 'is_active' => 'boolean'];
     }
 }
