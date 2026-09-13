@@ -10,6 +10,8 @@ use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\WebsiteSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class StorefrontTest extends TestCase
@@ -623,6 +625,18 @@ class StorefrontTest extends TestCase
             ->assertOk()
             ->assertSee('<meta property="og:image" content="'.asset('storage/products/og-feature.jpg').'">', false)
             ->assertSee('<meta name="twitter:image" content="'.asset('storage/products/og-feature.jpg').'">', false);
+    }
+
+    public function test_product_page_reports_the_og_images_actual_dimensions(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->putFileAs('products', UploadedFile::fake()->image('og-feature.jpg', 800, 500), 'og-feature.jpg');
+        $product = Product::factory()->create(['featured_image_path' => 'products/og-feature.jpg']);
+
+        $this->get(route('catalog.show', $product->slug))
+            ->assertOk()
+            ->assertSee('<meta property="og:image:width" content="800">', false)
+            ->assertSee('<meta property="og:image:height" content="500">', false);
     }
 
     public function test_product_gallery_shows_left_thumbnails_only_for_multiple_images(): void

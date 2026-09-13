@@ -15,8 +15,16 @@
     <meta property="og:url" content="{{ $canonical ?? url()->current() }}">
     <meta property="og:type" content="{{ $ogType ?? 'website' }}">
     <meta name="twitter:card" content="summary_large_image">
-    @php $socialImage = $image ?? ($websiteSettings?->featured_image_path ? asset('storage/'.$websiteSettings->featured_image_path) : null); @endphp
-    @if ($socialImage)<meta property="og:image" content="{{ $socialImage }}"><meta name="twitter:image" content="{{ $socialImage }}">@endif
+    @php
+        $imagePath = $image ?? $websiteSettings?->featured_image_path;
+        $socialImage = $imagePath ? asset('storage/'.$imagePath) : null;
+        $socialImageSize = $imagePath ? @getimagesize(\Illuminate\Support\Facades\Storage::disk('public')->path($imagePath)) : false;
+    @endphp
+    @if ($socialImage)
+        <meta property="og:image" content="{{ $socialImage }}">
+        @if ($socialImageSize)<meta property="og:image:width" content="{{ $socialImageSize[0] }}"><meta property="og:image:height" content="{{ $socialImageSize[1] }}">@endif
+        <meta name="twitter:image" content="{{ $socialImage }}">
+    @endif
     @if ($websiteSettings?->favicon_path)<link rel="icon" href="{{ asset('storage/'.$websiteSettings->favicon_path) }}">@endif
     @if (filled($websiteSettings?->search_console_verification))
         <meta name="google-site-verification" content="{{ $websiteSettings->search_console_verification }}">
