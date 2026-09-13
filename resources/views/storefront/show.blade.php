@@ -1,4 +1,4 @@
-<x-storefront-layout :title="$product->seo_title ?: $product->title" :description="$product->meta_description ?: $product->short_description" og-type="product">
+<x-storefront-layout :title="$product->seo_title ?: $product->title" :description="$product->meta_description ?: $product->short_description" :image="$product->featured_image_path ? asset('storage/'.$product->featured_image_path) : null" og-type="product">
     @php
         $deliveryRates = app(App\Services\DeliveryCharges::class)->rates([$product]);
         $breadcrumbCategories = collect();

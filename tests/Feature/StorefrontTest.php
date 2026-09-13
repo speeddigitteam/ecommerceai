@@ -615,6 +615,16 @@ class StorefrontTest extends TestCase
             ->assertSee('5,999');
     }
 
+    public function test_product_page_uses_the_products_own_featured_image_for_og_image(): void
+    {
+        $product = Product::factory()->create(['featured_image_path' => 'products/og-feature.jpg']);
+
+        $this->get(route('catalog.show', $product->slug))
+            ->assertOk()
+            ->assertSee('<meta property="og:image" content="'.asset('storage/products/og-feature.jpg').'">', false)
+            ->assertSee('<meta name="twitter:image" content="'.asset('storage/products/og-feature.jpg').'">', false);
+    }
+
     public function test_product_gallery_shows_left_thumbnails_only_for_multiple_images(): void
     {
         $singleImageProduct = Product::factory()->create([
