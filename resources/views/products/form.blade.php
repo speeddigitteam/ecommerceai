@@ -310,7 +310,7 @@
                                 <p class="mt-1 text-sm text-slate-500">Add product images and video to make the listing more engaging.</p>
                             </div>
                             <div class="mt-5 grid grid-cols-1 gap-5 md:grid-cols-3">
-                                <div class="flex min-h-80 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40">
+                                <div x-data="{ removeFeatured: {{ old('remove_featured_image') ? 'true' : 'false' }}, newFeaturedName: '' }" class="flex min-h-80 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/40">
                                     <div class="flex items-center gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-700">
                                         <span class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400">
                                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" stroke-width="1.8"/><circle cx="9" cy="10" r="2" stroke-width="1.8"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m4 17 5-4 3 3 3-2 5 4"/></svg>
@@ -319,17 +319,18 @@
                                     </div>
                                     <div class="flex flex-1 flex-col p-4">
                                         @if($product->featured_image_path)
-                                            <img src="{{ asset('storage/'.$product->featured_image_path) }}" class="aspect-[4/3] w-full rounded-xl border border-slate-200 object-cover dark:border-slate-700" alt="{{ $product->title }} featured image">
+                                            <img src="{{ asset('storage/'.$product->featured_image_path) }}" :class="removeFeatured ? 'opacity-35 grayscale' : ''" class="aspect-[4/3] w-full rounded-xl border border-slate-200 object-cover transition dark:border-slate-700" alt="{{ $product->title }} featured image">
                                             <label class="mt-3 inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-rose-600 dark:text-rose-400">
-                                                <input name="remove_featured_image" type="checkbox" value="1" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500">
-                                                Remove featured image
+                                                <input x-model="removeFeatured" name="remove_featured_image" type="checkbox" value="1" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                                                <span x-text="removeFeatured ? 'Image will be removed on save' : 'Remove featured image'"></span>
                                             </label>
                                         @else
                                             <div class="grid aspect-[4/3] w-full place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-white text-center dark:border-slate-700 dark:bg-slate-900">
                                                 <div class="px-4"><svg class="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10.5M8 10l2.5 2.5L14 9l6 6M3 20h18"/></svg><p class="mt-2 text-xs text-slate-400">No featured image yet</p></div>
                                             </div>
                                         @endif
-                                        <input id="featured-image" name="featured_image" type="file" accept="image/png,image/jpeg,image/webp" class="mt-4 block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-500/15 dark:file:text-indigo-300">
+                                        <input id="featured-image" name="featured_image" type="file" accept="image/png,image/jpeg,image/webp" @change="newFeaturedName = $event.target.files[0]?.name || ''; if (newFeaturedName) removeFeatured = false" class="mt-4 block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-500/15 dark:file:text-indigo-300">
+                                        <p x-cloak x-show="newFeaturedName" class="mt-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400"><span x-text="newFeaturedName"></span> will replace the current image on save.</p>
                                         <p class="mt-2 text-xs text-slate-400">PNG, JPG or WebP &middot; Max 4 MB</p>
                                     </div>
                                 </div>
@@ -378,7 +379,7 @@
                                             </div>
                                         @endif
                                         <input id="product-gallery" name="gallery[]" type="file" multiple accept="image/png,image/jpeg,image/webp" class="mt-4 block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-violet-50 file:px-3 file:py-2 file:font-semibold file:text-violet-700 hover:file:bg-violet-100 dark:file:bg-violet-500/15 dark:file:text-violet-300">
-                                        <p class="mt-2 text-xs text-slate-400">Select multiple images &middot; Max 4 MB each</p>
+                                        <p class="mt-2 text-xs text-slate-400">Removed and newly selected images are applied together when you save.</p>
                                     </div>
                                 </div>
                             </div>
